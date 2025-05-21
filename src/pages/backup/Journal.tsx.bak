@@ -1,0 +1,1137 @@
+import React, { useState, useEffect, useRef } from 'react';
+import Navbar from '@/components/Navbar';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+// Import emotion utilities
+import { detectEmotion, getSuggestionForEmotion } from '@/utils/emotionUtils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format, subDays, isToday, isYesterday, differenceInDays } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { 
+  CalendarIcon, Search, Filter, BarChart, Calendar as CalendarIcon2,
+  Download, Trash2, Edit, X, Star, Sparkles, Flame, Trophy, 
+  ArrowUpCircle, ArrowDownCircle, Share, ChevronRight
+} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { 
+  Dialog, DialogContent, DialogDescription, DialogHeader, 
+  DialogTitle, DialogTrigger, DialogFooter, DialogClose 
+} from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { toast } from '@/hooks/use-toast';
+import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { useUser } from '@/hooks/use-user';
+import { supabase, journalOperations } from '@/lib/supabase';
+import { SupabaseTest } from '@/components/SupabaseTest';
+
+
+interface JournalEntry {
+  id: string;
+  title: string;
+  content: string;
+  content: string;
+  date: Date;
+  date: Date;
+  intensity?: number;
+  tags?: string[];
+}
+
+// Journal prompts by emotion type
+const journalPrompts: Record<Emotion, string[]> = {
+  joy: [
+    "What made you smile today?",
+    "Describe a moment of pure happiness you experienced recently.",
+    "What accomplishment are you most proud of this week?"
+  ],
+  sadness: [
+    "What's weighing on your mind today?",
+    "When did you last feel this way, and how did you overcome it?",
+    "What would help you feel better right now?"
+  ],
+  anger: [
+    "What triggered your frustration today?",
+    "How could you address this situation differently next time?",
+    "What helps you calm down when you're upset?"
+  ],
+  fear: [
+    "What's causing your anxiety right now?",
+    "What's the worst that could happen, and how likely is it?",
+    "What small step could you take to face this fear?"
+  ],
+  love: [
+    "Who are you feeling connected to right now?",
+    "How have you shown love to yourself or others recently?",
+    "What relationship in your life are you most grateful for?"
+  ],
+  surprise: [
+    "What unexpected thing happened today?",
+    "How did this surprise change your perspective?",
+    "What did you learn from this unexpected experience?"
+  ],
+  neutral: [
+    "How would you describe your day so far?",
+    "What's on your mind right now?",
+    "What are you looking forward to in the coming days?"
+  ]
+
+const demoEntries: JournalEntry[] = [
+  {
+    id: '1',
+    title: 'Productive day at work',
+    content: "Finally completed the project I've been working on for weeks. I feel accomplished and relieved that it turned out well.",
+    emotion: 'joy',
+    emotion: 'joy',
+    date: new Date(2025, 4, 1),
+    intensity: 8,
+  },
+  {
+    id: '2',
+    title: 'Feeling anxious about presentation',
+    content: "I have a big presentation tomorrow and I'm worried about how it will go. I need to practice more but I'm running out of time.",
+    emotion: 'fear',
+    emotion: 'fear',
+    date: new Date(2025, 4, 30),
+    intensity: 7,
+  },
+  {
+    id: '3',
+    title: 'Wonderful evening with friends',
+    content: 'Had dinner with old friends tonight. It was so nice to catch up and laugh together like old times.',
+    emotion: 'love',
+    emotion: 'love',
+    date: new Date(2025, 4, 28),
+    intensity: 9,
+    tags: ['social', 'friendship']
+  },
+  {
+    id: '4',
+    title: 'Unexpected promotion',
+    content: "My manager called me into her office today and offered me a promotion! I wasn't expecting this at all and I'm still processing it.",
+    emotion: 'surprise',
+    date: new Date(2025, 4, 15),
+    intensity: 9,
+    tags: ['work', 'career']
+  },
+  {
+    id: '5',
+    title: 'Missed deadline',
+    content: "I'm really annoyed with myself for missing that important deadline. The team had to scramble because of my mistake.",
+    emotion: 'anger',
+    date: new Date(2025, 4, 10),
+    intensity: 6,
+    tags: ['work', 'stress']
+  }
+];
+
+// Track a streaks record
+interface StreakData {
+  currentStreak: number;
+  longestStreak: number;
+  lastEntryDate: Date | null;
+
+const Journal = () => {
+  const [entries, setEntries] = useState<JournalEntry[]>(demoEntries);
+  const [newEntry, setNewEntry] = useState({ title: '', content: '' });
+  const [isWriting, setIsWriting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('entries');
+  const [filterEmotion, setFilterEmotion] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [currentPrompt, setCurrentPrompt] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
+  const [streaks, setStreaks] = useState<StreakData>({
+    currentStreak: 0,
+    longestStreak: 0,
+    lastEntryDate: null
+  });
+  const [remindersEnabled, setRemindersEnabled] = useState(false);
+  const [reminderTime, setReminderTime] = useState('20:00');
+  const downloadRef = useRef<HTMLAnchorElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
+  const { user, loading: userLoading } = useUser();
+
+  // Get random journal prompt based on mood or general
+  const getRandomPrompt = (emotion: Emotion = 'neutral') => {
+    const prompts = journalPrompts[emotion];
+    const randomIndex = Math.floor(Math.random() * prompts.length);
+    return prompts[randomIndex];
+  };
+
+  // Generate a new random prompt
+  const generateNewPrompt = () => {
+    setCurrentPrompt(getRandomPrompt());
+  };
+
+  // Use prompt as starting point for journal
+  const usePromptForJournal = () => {
+    setNewEntry({
+      title: '',
+      content: currentPrompt + '\n\n'
+    });
+    setIsWriting(true);
+  };
+
+  useEffect(() => {
+    // Set initial random prompt
+    generateNewPrompt();
+  }, []);
+
+  // Fetch entries from Supabase if user is authenticated
+  useEffect(() => {
+    if (userLoading) return;
+    
+    const fetchEntries = async () => {
+      if (!user) {
+        // Use demo entries if not authenticated
+        setEntries(demoEntries);
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        setIsLoading(true);
+        const dbEntries = await journalOperations.getEntries(user.id);
+        
+        if (dbEntries.length > 0) {
+          // Map database entries to our JournalEntry format
+          const mappedEntries: JournalEntry[] = dbEntries.map(entry => ({
+            id: entry.id,
+            title: entry.title,
+            content: entry.content,
+            emotion: entry.emotion as Emotion,
+            intensity: entry.emotion_intensity,
+            date: new Date(entry.created_at),
+            tags: entry.tags
+          }));
+          
+          setEntries(mappedEntries);
+        }
+      } catch (error) {
+        console.error('Failed to fetch entries:', error);
+        toast({
+          title: 'Connection Error',
+          description: 'Using offline mode with demo data',
+          variant: 'destructive',
+        });
+        setIsOnline(false);
+        // Fall back to demo entries
+        setEntries(demoEntries);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchEntries();
+  }, [user, userLoading]);
+
+  // Filter entries based on various criteria
+  const filteredEntries = entries.filter(entry => {
+    // Filter by emotion
+    if (filterEmotion !== 'all' && entry.emotion !== filterEmotion) {
+      return false;
+    }
+    
+    // Filter by search query
+    if (searchQuery && !(
+      entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      entry.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (entry.tags && entry.tags.some(tag => 
+        tag.toLowerCase().includes(searchQuery.toLowerCase())
+      ))
+    )) {
+      return false;
+    }
+    
+    // Filter by date
+    if (selectedDate && 
+      !(entry.date.getDate() === selectedDate.getDate() &&
+        entry.date.getMonth() === selectedDate.getMonth() &&
+        entry.date.getFullYear() === selectedDate.getFullYear())) {
+      return false;
+    }
+    
+    return true;
+  });
+
+  // Calculate journal streaks
+  useEffect(() => {
+    if (entries.length === 0) return;
+    
+    // Sort entries by date (newest first)
+    const sortedEntries = [...entries].sort((a, b) => b.date.getTime() - a.date.getTime());
+    const lastEntryDate = sortedEntries[0].date;
+    
+    // Check if last entry was today or yesterday
+    const isStreakActive = isToday(lastEntryDate) || isYesterday(lastEntryDate);
+    
+    // Calculate current streak
+    let currentStreak = 0;
+    if (isStreakActive) {
+      currentStreak = 1; // Start with today/yesterday
+      const datesChecked = new Set<string>();
+      datesChecked.add(format(lastEntryDate, 'yyyy-MM-dd'));
+      
+      let prevDate = subDays(lastEntryDate, 1);
+      
+      for (let i = 1; i < sortedEntries.length; i++) {
+        const entryDate = sortedEntries[i].date;
+        const entryDateStr = format(entryDate, 'yyyy-MM-dd');
+        
+        // Skip if already counted this date
+        if (datesChecked.has(entryDateStr)) continue;
+        
+        // Check if this entry continues the streak
+        if (differenceInDays(prevDate, entryDate) <= 1) {
+          currentStreak++;
+          datesChecked.add(entryDateStr);
+          prevDate = subDays(entryDate, 1);
+        } else {
+          // Streak broken
+          break;
+        }
+      }
+    }
+    
+    // Update longest streak if current is higher
+    const newLongestStreak = Math.max(currentStreak, streaks.longestStreak);
+    
+    setStreaks({
+      currentStreak,
+      longestStreak: newLongestStreak,
+      lastEntryDate
+    });
+  }, [entries]);
+
+  // Handle entry editing
+  const handleEditEntry = (entry: JournalEntry) => {
+    setEditingEntryId(entry.id);
+    setNewEntry({
+      title: entry.title,
+      content: entry.content
+    });
+    setIsWriting(true);
+    setIsEditing(true);
+  };
+
+  // Handle entry deletion
+  const handleDeleteEntry = (entryId: string) => {
+    setEntryToDelete(entryId);
+    setDeleteConfirmOpen(true);
+  };
+
+  // Confirm entry deletion
+  const confirmDelete = async () => {
+    if (entryToDelete) {
+      // Delete from Supabase if online
+      if (user && isOnline) {
+        try {
+          await journalOperations.deleteEntry(entryToDelete);
+        } catch (error) {
+          console.error('Error deleting entry from database:', error);
+          setIsOnline(false);
+          toast({
+            title: "Connection Error",
+            description: "Entry was deleted locally but not from the cloud",
+            variant: "destructive"
+          });
+        }
+      }
+      
+      // Delete from local state
+      setEntries(entries.filter(entry => entry.id !== entryToDelete));
+      setDeleteConfirmOpen(false);
+      setEntryToDelete(null);
+      toast({
+        title: "Entry deleted",
+        description: "Your journal entry has been removed",
+        variant: "default"
+      });
+    }
+  };
+
+  // View entry details
+  const viewEntryDetails = (entry: JournalEntry) => {
+    setSelectedEntry(entry);
+    setShowDetailModal(true);
+  };
+
+  const handleSaveEntry = async () => {
+    if (!newEntry.title || !newEntry.content) return;
+    
+    setIsSaving(true);
+    try {
+    try {
+      const emotionResult = await detectEmotion(newEntry.content);
+      const emotionResult = await detectEmotion(newEntry.content);
+      console.log('Emotion analysis result:', emotionResult);
+      
+      const entryTags = extractTags(newEntry.content);
+      
+      if (isEditing && editingEntryId) {
+        // Update existing entry
+        if (user && isOnline) {
+          // Update in Supabase
+          try {
+            await journalOperations.updateEntry(editingEntryId, {
+              title: newEntry.title,
+              content: newEntry.content,
+              emotion: emotionResult.emotion,
+              emotion_intensity: emotionResult.intensity,
+              tags: entryTags
+            });
+          } catch (error) {
+            console.error('Error updating entry in database:', error);
+            setIsOnline(false);
+          }
+        }
+        
+        // Update local state
+        setEntries(entries.map(entry => 
+          entry.id === editingEntryId ? {
+            ...entry,
+            title: newEntry.title,
+            content: newEntry.content,
+            emotion: emotionResult.emotion,
+            intensity: emotionResult.intensity,
+            tags: entryTags
+          } : entry
+        ));
+        
+        toast({
+          title: "Entry updated",
+          description: "Your journal entry has been updated",
+          variant: "default"
+        });
+      } else {
+        // Create new entry
+        const newId = Date.now().toString();
+        const newEntryData: JournalEntry = {
+        title: newEntry.title,
+        content: newEntry.content,
+        emotion: emotionResult.emotion,
+          emotion: emotionResult.emotion,
+          intensity: emotionResult.intensity,
+          date: new Date(),
+          tags: entryTags
+        };
+        
+        if (user && isOnline) {
+          // Save to Supabase
+          try {
+            const savedEntry = await journalOperations.saveEntry({
+              id: newId,
+              user_id: user.id,
+              title: newEntry.title,
+              content: newEntry.content,
+              emotion: emotionResult.emotion,
+              emotion_intensity: emotionResult.intensity,
+              tags: entryTags
+            });
+            
+            // Update local entry with the server-generated ID
+            newEntryData.id = savedEntry.id;
+          } catch (error) {
+            console.error('Error saving entry to database:', error);
+            setIsOnline(false);
+          }
+        }
+        
+        // Update local state
+        setEntries([newEntryData, ...entries]);
+      }
+      setNewEntry({ title: '', content: '' });
+      setIsWriting(false);
+      setIsWriting(false);
+      setIsEditing(false);
+      setEditingEntryId(null);
+    } catch (error) {
+      console.error('Error saving entry:', error);
+      console.error('Error saving entry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save your journal entry",
+        variant: "destructive"
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  };
+
+  // Extract hashtags from content
+  const extractTags = (content: string): string[] => {
+    const tags: string[] = [];
+    const tagRegex = /#(\w+)/g;
+    let match;
+    
+    while ((match = tagRegex.exec(content)) !== null) {
+      tags.push(match[1].toLowerCase());
+    }
+    
+    return tags;
+  };
+
+  // Calculate emotion distribution for analytics
+  const emotionCounts = entries.reduce((acc: Record<string, number>, entry) => {
+    acc[entry.emotion] = (acc[entry.emotion] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Get most frequent emotion
+  const getMostFrequentEmotion = (): Emotion => {
+    let maxCount = 0;
+    let mostFrequent: Emotion = 'neutral';
+    
+    Object.entries(emotionCounts).forEach(([emotion, count]) => {
+      if (count > maxCount) {
+        maxCount = count;
+        mostFrequent = emotion as Emotion;
+      }
+    });
+    
+    return mostFrequent;
+  };
+
+  // Reset all filters
+  const resetFilters = () => {
+    setFilterEmotion('all');
+    setSearchQuery('');
+    setSelectedDate(undefined);
+  };
+
+  // Export journal entries to JSON file
+  const exportJournal = () => {
+    // Create a JSON string of all entries
+    const journalData = JSON.stringify(entries, null, 2);
+    
+    // Create blob and URL
+    const blob = new Blob([journalData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    // Set up download
+    if (downloadRef.current) {
+      downloadRef.current.href = url;
+      downloadRef.current.download = `mindmate-journal-${format(new Date(), 'yyyy-MM-dd')}.json`;
+      downloadRef.current.click();
+      
+      // Clean up
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  // Get entries for today
+  const getTodaysEntries = () => {
+    return entries.filter(entry => isToday(entry.date));
+  };
+
+  // Get mood improvement or decline vs previous day
+  const getMoodChange = (): { direction: 'up' | 'down' | 'same', change: number } => {
+    const todayEntries = entries.filter(entry => isToday(entry.date));
+    const yesterdayEntries = entries.filter(entry => isYesterday(entry.date));
+    
+    if (todayEntries.length === 0 || yesterdayEntries.length === 0) {
+      return { direction: 'same', change: 0 };
+    }
+    
+    // Calculate average intensity for positive emotions (joy, love)
+    const calculatePositiveScore = (entries: JournalEntry[]) => {
+      const positiveEntries = entries.filter(entry => 
+        ['joy', 'love'].includes(entry.emotion)
+      );
+      
+      if (positiveEntries.length === 0) return 0;
+      
+      const totalIntensity = positiveEntries.reduce((sum, entry) => 
+        sum + (entry.intensity || 5), 0);
+      
+      return totalIntensity / positiveEntries.length;
+    };
+    
+    const todayScore = calculatePositiveScore(todayEntries);
+    const yesterdayScore = calculatePositiveScore(yesterdayEntries);
+    
+    const difference = todayScore - yesterdayScore;
+    
+    if (difference > 0) {
+      return { direction: 'up', change: difference };
+    } else if (difference < 0) {
+      return { direction: 'down', change: Math.abs(difference) };
+    } else {
+      return { direction: 'same', change: 0 };
+    }
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gradient-radial from-primary/5 via-background to-background">
+      <Navbar />
+      
+      <main className="flex-1 pt-24 pb-12">
+        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4">
+          {isLoading ? (
+            <Card className="w-full p-6">
+              <div className="flex flex-col items-center justify-center space-y-4 py-12">
+                <div className="w-16 h-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin"></div>
+                <p className="text-muted-foreground">Loading your journal entries...</p>
+              </div>
+            </Card>
+          ) : (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <div className="flex justify-between items-center mb-4">
+                <TabsList className="grid grid-cols-4">
+                  <TabsTrigger value="entries">Entries</TabsTrigger>
+                  <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                  <TabsTrigger value="prompts">Prompts</TabsTrigger>
+                  <TabsTrigger value="settings">Settings</TabsTrigger>
+                </TabsList>
+                
+                {activeTab === 'entries' && !isWriting && (
+                  <div className="flex items-center gap-2">
+                    <Button onClick={exportJournal} variant="outline" size="icon" title="Export journal entries">
+                      <Download className="h-4 w-4" />
+              <Button onClick={() => setIsWriting(true)}>New Entry</Button>
+                    <Button onClick={() => setIsWriting(true)}>New Entry</Button>
+            )}
+          </div>
+              </div>
+              
+              {/* Show sync status indicator */}
+              {!isOnline && (
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 px-4 py-2 text-sm rounded-md mb-4 flex items-center">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 mr-2"></div>
+                  <p>Offline mode: Changes will be saved locally only</p>
+                </div>
+              )}
+              
+              <TabsContent value="entries" className="space-y-6">
+                {!isWriting && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Today's Entries</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-2xl font-bold">{getTodaysEntries().length}</div>
+                        <p className="text-xs text-muted-foreground">
+                          {getTodaysEntries().length === 0 ? "Write your first entry today" : 
+                            getTodaysEntries().length === 1 ? "You've written 1 entry today" : 
+                            `You've written ${getTodaysEntries().length} entries today`}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Journal Streak</CardTitle>
+                      </CardHeader>
+                      <CardContent className="flex items-center">
+                        <Flame className="h-8 w-8 mr-2 text-amber-500" />
+                        <div>
+                          <div className="text-2xl font-bold">{streaks.currentStreak} days</div>
+                          <p className="text-xs text-muted-foreground">Longest streak: {streaks.longestStreak} days</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Mood Tracker</CardTitle>
+                      </CardHeader>
+                      <CardContent className="flex items-center">
+                        {getMoodChange().direction === 'up' ? (
+                          <ArrowUpCircle className="h-8 w-8 mr-2 text-joy" />
+                        ) : getMoodChange().direction === 'down' ? (
+                          <ArrowDownCircle className="h-8 w-8 mr-2 text-sadness" />
+                        ) : (
+                          <div className="h-8 w-8 mr-2 flex items-center justify-center">―</div>
+                        )}
+                        <div>
+                          <div className="text-lg font-bold capitalize">
+                            {getMoodChange().direction === 'up' ? 'Improving' : 
+                             getMoodChange().direction === 'down' ? 'Declining' : 'Stable'}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {getMoodChange().direction === 'same' ? 
+                              'Your mood is consistent with yesterday' : 
+                              `${getMoodChange().change.toFixed(1)} points ${getMoodChange().direction === 'up' ? 'better' : 'worse'} than yesterday`}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+          
+          {isWriting && (
+            <Card className="mb-8 glass dark:glass-dark border-none shadow-lg animate-fade-in">
+              <CardHeader>
+                    <CardHeader>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <Input 
+                      placeholder="Entry title" 
+                      value={newEntry.title}
+                      onChange={(e) => setNewEntry({...newEntry, title: e.target.value})}
+                      className="bg-white/50 dark:bg-black/30 border-white/30 dark:border-white/10"
+                    />
+                  </div>
+                  <div>
+                    <Textarea 
+                      placeholder="How are you feeling today?" 
+                      rows={6}
+                      value={newEntry.content}
+                      onChange={(e) => setNewEntry({...newEntry, content: e.target.value})}
+                      className="bg-white/50 dark:bg-black/30 border-white/30 dark:border-white/10"
+                    />
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Add tags using hashtags (e.g., #work #health #relationships)
+                  </div>
+                  <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" onClick={() => {
+                            setIsWriting(false);
+                            setIsEditing(false);
+                            setEditingEntryId(null);
+                            setNewEntry({ title: '', content: '' });
+                    <Button onClick={handleSaveEntry} disabled={isSaving || !newEntry.title || !newEntry.content}>
+                          <Button onClick={handleSaveEntry} disabled={isSaving || !newEntry.title || !newEntry.content}>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+                
+                <div className="flex flex-col gap-4 md:flex-row md:items-center pb-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search entries..."
+                      className="pl-8"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Select
+                      value={filterEmotion}
+                      onValueChange={setFilterEmotion}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter by emotion" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Emotions</SelectItem>
+                        <SelectItem value="joy">Joy</SelectItem>
+                        <SelectItem value="sadness">Sadness</SelectItem>
+                        <SelectItem value="anger">Anger</SelectItem>
+                        <SelectItem value="fear">Fear</SelectItem>
+                        <SelectItem value="love">Love</SelectItem>
+                        <SelectItem value="surprise">Surprise</SelectItem>
+                        <SelectItem value="neutral">Neutral</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="w-[240px] pl-3 text-left font-normal">
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {selectedDate ? format(selectedDate, 'PPP') : <span>Pick a date</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={selectedDate}
+                          onSelect={setSelectedDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    
+                    <Button variant="ghost" size="icon" onClick={resetFilters}>
+                      <Filter className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                {filteredEntries.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No entries found matching your filters.</p>
+                    <Button variant="link" onClick={resetFilters}>Clear filters</Button>
+                  </div>
+          <div className="space-y-4">
+                  <div className="space-y-4">
+                    {filteredEntries.map(entry => (
+                      <JournalCard 
+                        key={entry.id} 
+                        entry={entry} 
+                        onEdit={() => handleEditEntry(entry)}
+                        onDelete={() => handleDeleteEntry(entry.id)}
+                        onView={() => viewEntryDetails(entry)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="analytics" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Emotion Analytics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="font-medium mb-2">Emotion Distribution</h3>
+                        <div className="flex gap-2 flex-wrap">
+                          {Object.entries(emotionCounts).map(([emotion, count]) => (
+                            <div key={emotion} className="flex flex-col items-center">
+                              <div className={`w-full h-[100px] bg-${emotion}/20 rounded-md flex items-end justify-center px-2`}>
+                                <div 
+                                  className={`w-8 bg-${emotion} rounded-t-md`} 
+                                  style={{ height: `${(count / entries.length) * 100}px` }}
+                                ></div>
+                              </div>
+                              <span className="text-xs capitalize mt-1">{emotion}</span>
+                              <span className="text-xs text-muted-foreground">{count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div>
+                        <h3 className="font-medium mb-2">Emotional Insights</h3>
+                        <p>Your most frequent emotion is <span className="font-semibold capitalize">{getMostFrequentEmotion()}</span>.</p>
+                        <p className="mt-2">{getSuggestionForEmotion(getMostFrequentEmotion())}</p>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div>
+                        <h3 className="font-medium mb-2">Monthly Mood Overview</h3>
+                        <div className="bg-card rounded-md p-4">
+                          <p className="text-center text-muted-foreground">Calendar mood visualization coming soon</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="prompts" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Journal Prompts</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      <div className="bg-primary/5 rounded-lg p-6 text-center">
+                        <p className="text-xl font-medium mb-4">{currentPrompt}</p>
+                        <div className="flex flex-wrap justify-center gap-2">
+                          <Button onClick={generateNewPrompt} variant="outline">New Prompt</Button>
+                          <Button onClick={usePromptForJournal}>Use This Prompt</Button>
+                        </div>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div>
+                        <h3 className="font-medium mb-4">Prompts by Emotion</h3>
+                        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                          {Object.entries(journalPrompts).map(([emotion, prompts]) => (
+                            <Card key={emotion} className={`bg-${emotion}/10 hover:bg-${emotion}/20 transition-colors`}>
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-base capitalize">{emotion}</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <ul className="list-disc list-inside space-y-1">
+                                  {prompts.map((prompt, index) => (
+                                    <li key={index} className="text-sm">{prompt}</li>
+                                  ))}
+                                </ul>
+                              </CardContent>
+                              <CardFooter>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => {
+                                    setCurrentPrompt(prompts[Math.floor(Math.random() * prompts.length)]);
+                                    setActiveTab('prompts');
+                                  }}
+                                >
+                                  Use a {emotion} prompt
+                                </Button>
+                              </CardFooter>
+            ))}
+          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="settings" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Journal Settings</CardTitle>
+                    <CardDescription>Customize your journaling experience</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium">Daily Reminders</h3>
+                          <p className="text-sm text-muted-foreground">Get notified to write in your journal</p>
+                        </div>
+                        <Switch 
+                          checked={remindersEnabled} 
+                          onCheckedChange={setRemindersEnabled} 
+                        />
+                      </div>
+                      
+                      {remindersEnabled && (
+                        <div className="pl-6 border-l-2 border-primary/10">
+                          <Label htmlFor="reminderTime">Reminder Time</Label>
+                          <Input 
+                            id="reminderTime"
+                            type="time" 
+                            value={reminderTime}
+                            onChange={(e) => setReminderTime(e.target.value)}
+                            className="w-32 mt-1"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div>
+                      <h3 className="font-medium mb-2">Data Management</h3>
+                      <div className="flex flex-col space-y-2">
+                        <Button variant="outline" className="justify-start" onClick={exportJournal}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Export Journal Data
+                        </Button>
+                        <Button variant="outline" className="justify-start text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Clear All Journal Entries
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div>
+                      <h3 className="font-medium mb-2">Database Connection</h3>
+                      <SupabaseTest />
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+        </div>
+      </main>
+      </main>
+      
+      {/* Detail view modal */}
+      <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
+        <DialogContent className="max-w-2xl">
+          {selectedEntry && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedEntry.title}</DialogTitle>
+                <DialogDescription>
+                  {format(selectedEntry.date, 'PPPP')} · {selectedEntry.emotion.charAt(0).toUpperCase() + selectedEntry.emotion.slice(1)}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className="whitespace-pre-wrap">{selectedEntry.content}</div>
+                
+                {selectedEntry.tags && selectedEntry.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {selectedEntry.tags.map(tag => (
+                      <Badge key={tag} variant="outline" className="text-xs">
+                        #{tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                
+                <Separator />
+                
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm">Emotional Analysis</h4>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full bg-${selectedEntry.emotion}`}></div>
+                    <span className="capitalize">{selectedEntry.emotion}</span>
+                    <span className="text-muted-foreground">·</span>
+                    <span>Intensity: {selectedEntry.intensity}/10</span>
+                  </div>
+                  
+                  <div className="pt-2">
+                    <h4 className="font-medium text-sm mb-1">Suggestion</h4>
+                    <p className="text-sm text-muted-foreground">{getSuggestionForEmotion(selectedEntry.emotion)}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    handleEditEntry(selectedEntry);
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+                <Button 
+                  variant="destructive"
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    handleDeleteEntry(selectedEntry.id);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this journal entry. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Hidden download link for export */}
+    </div>
+  );
+};
+
+
+const JournalCard: React.FC<{ 
+  entry: JournalEntry, 
+  onEdit: () => void,
+  onDelete: () => void,
+  onView: () => void
+  const emotionColors = {
+    joy: 'bg-joy/20 border-joy/30',
+    sadness: 'bg-sadness/20 border-sadness/30',
+    anger: 'bg-anger/20 border-anger/30',
+    fear: 'bg-fear/20 border-fear/30',
+    love: 'bg-love/20 border-love/30',
+    surprise: 'bg-surprise/20 border-surprise/30',
+    neutral: 'bg-neutral/20 border-neutral/30',
+  };
+  
+  const emotionColor = emotionColors[entry.emotion as keyof typeof emotionColors] || emotionColors.neutral;
+  const emotionColor = emotionColors[entry.emotion as keyof typeof emotionColors] || emotionColors.neutral;
+  
+  // Format date as "Today", "Yesterday", or the actual date
+  const formatEntryDate = (date: Date) => {
+    if (isToday(date)) {
+      return 'Today';
+    } else if (isYesterday(date)) {
+      return 'Yesterday';
+    } else {
+      return format(date, 'MMM d, yyyy');
+    }
+  
+  return (
+    <Card className={`${emotionColor} backdrop-blur-md border shadow-sm hover:shadow-md transition-shadow animate-fade-in`}>
+      <CardHeader className="pb-2">
+        <div className="flex justify-between items-start">
+          <CardTitle className="text-lg">{entry.title}</CardTitle>
+          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+      <CardContent>
+        <p className="whitespace-pre-wrap line-clamp-3">{entry.content}</p>
+        <div className="mt-4 flex flex-wrap gap-2 items-center">
+            <span className={`inline-block w-3 h-3 rounded-full bg-${entry.emotion} mr-2`}></span>
+            <span className="text-xs text-muted-foreground capitalize">{entry.emotion}</span>
+            <span className="text-xs text-muted-foreground capitalize">{entry.emotion}</span>
+            {entry.intensity && (
+              <span className="text-xs text-muted-foreground ml-1">({entry.intensity}/10)</span>
+            )}
+          </div>
+          
+          {entry.tags && entry.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {entry.tags.slice(0, 3).map(tag => (
+                <Badge key={tag} variant="outline" className="text-xs">
+                  #{tag}
+                </Badge>
+              ))}
+              {entry.tags.length > 3 && (
+                <Badge variant="outline" className="text-xs">
+                  +{entry.tags.length - 3}
+                </Badge>
+              )}
+            </div>
+          )}
+          
+          <div className="ml-auto flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={(e) => {
+              e.stopPropagation();
+              onEdit();
+            }}>
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onView}>
+              View Details
+              <ChevronRight className="h-4 w-4 ml-1" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default Journal;

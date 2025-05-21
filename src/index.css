@@ -1,0 +1,431 @@
+/* 
+ * This file uses Tailwind CSS directives.
+ * VSCode CSS linter may show warnings for @tailwind and @apply directives.
+ * These warnings can be safely ignored as they are valid Tailwind syntax.
+ */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 260 30% 96%;
+    --foreground: 260 20% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 260 20% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 260 20% 15%;
+
+    --primary: 260 60% 70%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 260 30% 94%;
+    --secondary-foreground: 260 20% 15%;
+
+    --muted: 260 30% 92%;
+    --muted-foreground: 260 20% 40%;
+
+    --accent: 280 60% 80%;
+    --accent-foreground: 260 20% 15%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 260 30% 86%;
+    --input: 260 30% 86%;
+    --ring: 260 60% 70%;
+
+    --radius: 1rem;
+
+    --sidebar-background: 260 30% 98%;
+    --sidebar-foreground: 260 20% 30%;
+    --sidebar-primary: 260 60% 70%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 260 30% 92%;
+    --sidebar-accent-foreground: 260 20% 15%;
+    --sidebar-border: 260 30% 86%;
+    --sidebar-ring: 260 60% 70%;
+  }
+
+  .dark {
+    --background: 260 20% 8%;
+    --foreground: 260 20% 92%;
+
+    --card: 260 20% 10%;
+    --card-foreground: 260 20% 92%;
+
+    --popover: 260 20% 10%;
+    --popover-foreground: 260 20% 92%;
+
+    --primary: 260 60% 70%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 260 20% 16%;
+    --secondary-foreground: 260 20% 92%;
+
+    --muted: 260 20% 16%;
+    --muted-foreground: 260 20% 60%;
+
+    --accent: 280 60% 30%;
+    --accent-foreground: 260 20% 92%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 260 20% 20%;
+    --input: 260 20% 20%;
+    --ring: 260 60% 70%;
+
+    --sidebar-background: 260 20% 12%;
+    --sidebar-foreground: 260 20% 85%;
+    --sidebar-primary: 260 60% 70%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 260 20% 16%;
+    --sidebar-accent-foreground: 260 20% 92%;
+    --sidebar-border: 260 20% 20%;
+    --sidebar-ring: 260 60% 70%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/20 backdrop-blur-lg border border-white/30 shadow-lg;
+  }
+
+  .glass-dark {
+    @apply bg-black/20 backdrop-blur-lg border border-white/10 shadow-lg;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Add responsive utility classes */
+
+/* Responsive container */
+.container-mobile {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .container-mobile {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Responsive text sizes */
+.text-responsive-xs {
+  font-size: 0.75rem;
+}
+
+.text-responsive-sm {
+  font-size: 0.875rem;
+}
+
+.text-responsive-base {
+  font-size: 0.9375rem;
+}
+
+.text-responsive-lg {
+  font-size: 1.125rem;
+}
+
+.text-responsive-xl {
+  font-size: 1.25rem;
+}
+
+.text-responsive-2xl {
+  font-size: 1.5rem;
+}
+
+.text-responsive-3xl {
+  font-size: 1.875rem;
+}
+
+@media (min-width: 640px) {
+  .text-responsive-xs {
+    font-size: 0.75rem;
+  }
+
+  .text-responsive-sm {
+    font-size: 0.875rem;
+  }
+
+  .text-responsive-base {
+    font-size: 1rem;
+  }
+
+  .text-responsive-lg {
+    font-size: 1.125rem;
+  }
+
+  .text-responsive-xl {
+    font-size: 1.25rem;
+  }
+
+  .text-responsive-2xl {
+    font-size: 1.75rem;
+  }
+
+  .text-responsive-3xl {
+    font-size: 2.25rem;
+  }
+}
+
+/* Responsive spacing */
+.p-responsive {
+  padding: 0.75rem;
+}
+
+.py-responsive {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.px-responsive {
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+}
+
+.m-responsive {
+  margin: 0.75rem;
+}
+
+.my-responsive {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.mx-responsive {
+  margin-left: 0.75rem;
+  margin-right: 0.75rem;
+}
+
+.gap-responsive {
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .p-responsive {
+    padding: 1.5rem;
+  }
+
+  .py-responsive {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
+
+  .px-responsive {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .m-responsive {
+    margin: 1.5rem;
+  }
+
+  .my-responsive {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .mx-responsive {
+    margin-left: 1.5rem;
+    margin-right: 1.5rem;
+  }
+
+  .gap-responsive {
+    gap: 1rem;
+  }
+}
+
+/* Responsive grid layout */
+.grid-responsive-1 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.grid-responsive-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.grid-responsive-3 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.grid-responsive-4 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .grid-responsive-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .grid-responsive-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .grid-responsive-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid-responsive-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .grid-responsive-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Touch-friendly interactive elements */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Stacked to horizontal layout switch */
+.stack-horizontal {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 640px) {
+  .stack-horizontal {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+/* Full-width on mobile, auto on desktop */
+.full-width-mobile {
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .full-width-mobile {
+    width: auto;
+  }
+}
+
+/* Fixed height scrollable containers */
+.scroll-container-sm {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.scroll-container {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.scroll-container-lg {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+@media (min-width: 640px) {
+  .scroll-container-sm {
+    max-height: 300px;
+  }
+
+  .scroll-container {
+    max-height: 400px;
+  }
+
+  .scroll-container-lg {
+    max-height: 600px;
+  }
+}
+
+/* Mobile-first buttons */
+.button-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .button-stack {
+    flex-direction: row;
+    width: auto;
+  }
+}
+
+/* Card layouts for mobile */
+.card-compact {
+  padding: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .card-compact {
+    padding: 1.5rem;
+  }
+}
+
+/* Responsive aspect ratio for images */
+.aspect-video-responsive {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  object-fit: cover;
+}
+
+/* Fix for overlapping fixed elements */
+.fixed-safe {
+  padding-top: var(--navbar-height, 60px);
+}
+
+/* Responsive table */
+.responsive-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.responsive-table table {
+  min-width: 100%;
+}
+
+/* Hide scrollbar but allow scrolling */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

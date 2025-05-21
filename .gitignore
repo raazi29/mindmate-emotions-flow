@@ -1,0 +1,99 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+/.nyc_output
+
+# Production
+/build
+/dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Python environment
+/backend/venv
+/backend/__pycache__
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+.env/
+venv/
+ENV/
+
+# Temporary files
+.tmp
+.temp
+.cache
+.eslintcache
+
+# Root level scripts now moved to scripts directory
+/Dockerfile
+/docker-compose.yml
+/start-dev.bat
+/start-dev.ps1
+/start-all.ps1
+/start-app.js
+/run-dev.js
+/insert-test-entry.js
+/supabase-connection-test.html
+/deploy-supabase-schema.js
+/export-schema.js
+/server.js
+/message-api.js
+
+# Debug files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Bun lockfile
+bun.lockb
+
+# Test files in src directory
+/src/*.test.js
+/src/*.test.ts
+/src/test-*.js
+/src/test-*.ts
+/src/*-test.js
+/src/*-test.ts
+/src/supabase-test.html
+
+# Local Netlify folder
+.netlify
+
+# Turborepo
+.turbo
