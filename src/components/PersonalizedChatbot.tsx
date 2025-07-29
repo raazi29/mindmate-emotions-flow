@@ -408,7 +408,7 @@ const PersonalizedChatbot: React.FC<PersonalizedChatbotProps> = ({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault(); // Prevent the default Enter key behavior
       if (inputValue.trim()) {
-        handleSendMessage();
+      handleSendMessage();
       }
     }
   };
@@ -572,37 +572,37 @@ const PersonalizedChatbot: React.FC<PersonalizedChatbotProps> = ({
           handleSendMessage();
         }}
       >
-        <Input
-          ref={inputRef}
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={handleKeyDown}
+                <Input
+                  ref={inputRef}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
           placeholder="Type a message..."
           disabled={isLoading || !backendAvailable}
-          className="flex-1"
-        />
-  
-        {isLoading ? (
-          <Button 
+                  className="flex-1"
+                />
+        
+                {isLoading ? (
+                  <Button 
             variant="outline" 
-            size="icon"
+            size="icon" 
             type="button" 
-            onClick={cancelRequest}
+                    onClick={cancelRequest}
             title="Cancel request"
-          >
-            <RefreshCcw className="h-4 w-4 animate-spin" />
-          </Button>
-        ) : (
-          <Button 
-            onClick={handleSendMessage} 
+                  >
+                    <RefreshCcw className="h-4 w-4 animate-spin" />
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={handleSendMessage} 
             disabled={!inputValue.trim() || !backendAvailable}
-            size="icon"
+                    size="icon"
             variant="default"
             type="submit"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        )}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                )}
       </form>
       
       {!backendAvailable && (

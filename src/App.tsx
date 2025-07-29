@@ -55,7 +55,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <ThemeToggleHandler />
+          <ThemeToggleHandler />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
@@ -64,7 +64,7 @@ const App = () => (
             <Route path="/resources" element={<Resources />} />
             <Route path="/chat" element={<AnonymousChatrooms />} />
             <Route path="/chat/setup" element={<ChatroomSetup />} />
-            <Route path="/chat/test" element={<SupabaseTest />} />
+              <Route path="/chat/test" element={<SupabaseTest />} />
             <Route path="/emotions-flow" element={<EmotionsFlow />} />
             <Route path="/safety-privacy" element={<SafetyPrivacy />} />
             <Route path="*" element={<NotFound />} />

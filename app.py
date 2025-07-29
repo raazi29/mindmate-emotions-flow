@@ -4,7 +4,7 @@ import httpx
 app = FastAPI()
 
 # Update the model to a safer option
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 QWEN_3_MODEL = "openai/gpt-3.5-turbo"  # Changed from qwen/qwen1.5-72b-chat to a more common model
 

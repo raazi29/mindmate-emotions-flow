@@ -27,8 +27,8 @@ const Index = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 animate-fade-in w-full sm:w-auto px-4 sm:px-0">
-            <Button size="lg" className="w-full sm:w-auto" asChild>
-              <Link to="/dashboard">Go to Dashboard</Link>
+              <Button size="lg" className="w-full sm:w-auto" asChild>
+                <Link to="/dashboard">Go to Dashboard</Link>
             </Button>
           </div>
           

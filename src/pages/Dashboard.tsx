@@ -1044,7 +1044,7 @@ const Dashboard = () => {
                 {showAdvancedAnalysis && hfEnabled ? (
                   <Card className="w-full shadow-md">
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">ML Emotion Analysis</CardTitle>
+                      <CardTitle className="text-lg">Emotion Analysis</CardTitle>
                       <CardDescription>AI-powered insights about your emotional patterns</CardDescription>
                     </CardHeader>
                     <CardContent>

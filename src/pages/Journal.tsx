@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription }
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { analyzeEmotionWithModel } from '@/utils/emotionUtils'; // Uncommented this import
+// import { detectEmotion, getSuggestionForEmotion } from '@/utils/emotionUtils'; // Potentially unused
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
@@ -34,11 +34,6 @@ import { SupabaseTest } from '@/components/SupabaseTest';
 import ReactMarkdown from 'react-markdown';
 import { motion } from 'framer-motion';
 import { HfInference } from '@huggingface/inference';
-import { journalOperations } from '@/lib/supabase';
-import { format, isToday, isYesterday, differenceInDays, subDays } from 'date-fns';
-// Import toast from hooks
-import { toast } from '@/hooks/use-toast';
-import { useUser } from '@/hooks/use-user';
 // Local declarations are defined below instead of imports
 import { 
   AreaChart, 
@@ -53,10 +48,6 @@ import {
   Cell,
 } from 'recharts'; // Note: Check for non-breaking spaces if copy-pasting
 import { Loader2 } from 'lucide-react';
-
-// Import HuggingFace configuration
-import { HuggingFaceConfig } from '@/lib/HuggingFaceConfig';
-
 type Emotion = 'joy' | 'sadness' | 'anger' | 'fear' | 'love' | 'surprise' | 'neutral';
 type SortOption = 'dateDesc' | 'dateAsc' | 'emotion' | 'title';
 
@@ -215,27 +206,53 @@ interface MoodFrequency {
   color: string;
 }
 
-// Demo entries for offline or unauthenticated mode
-const demoEntries: JournalEntry[] = Array(14).fill(null).map((_, i) => {
-  const now = new Date();
-  const date = new Date(now);
-  date.setDate(date.getDate() - i);
-  
-  // Alternate between different emotions
-  const emotions = ['joy', 'sadness', 'anger', 'fear', 'neutral', 'surprise', 'love'] as Emotion[];
-  const emotion = emotions[i % emotions.length];
-  
-  return {
-    id: `demo-${i}`,
-    title: `Demo Journal Entry ${i + 1}`,
-    content: `This is a demo journal entry for testing. It demonstrates a ${emotion} entry. #demo #${emotion}`,
-    emotion: emotion,
-    intensity: Math.floor(Math.random() * 10) + 1,
-    date: date,
-    tags: ['demo', emotion],
-    emotion_intensity: Math.floor(Math.random() * 10) + 1,
-  };
-});
+const demoEntries: JournalEntry[] = [
+  {
+    id: 'demo-1',
+    title: 'Productive day at work',
+    content: "Finally completed the project I've been working on for weeks. I feel accomplished and relieved that it turned out well.",
+    emotion: 'joy',
+    date: new Date(2025, 4, 1), // Month is 0-indexed, so 4 is May
+    intensity: 8,
+    tags: ['work', 'accomplishment']
+  },
+  {
+    id: 'demo-2',
+    title: 'Feeling anxious about presentation',
+    content: "I have a big presentation tomorrow and I'm worried about how it will go. I need to practice more but I'm running out of time.",
+    emotion: 'fear',
+    date: new Date(2025, 4, 30),
+    intensity: 7,
+    tags: ['work', 'stress']
+  },
+  {
+    id: 'demo-3',
+    title: 'Wonderful evening with friends',
+    content: 'Had dinner with old friends tonight. It was so nice to catch up and laugh together like old times.',
+    emotion: 'love',
+    date: new Date(2025, 4, 28),
+    intensity: 9,
+    tags: ['social', 'friendship']
+  },
+  {
+    id: 'demo-4',
+    title: 'Unexpected promotion',
+    content: "My manager called me into her office today and offered me a promotion! I wasn't expecting this at all and I'm still processing it.",
+    emotion: 'surprise',
+    date: new Date(2025, 4, 15),
+    intensity: 9,
+    tags: ['work', 'career']
+  },
+  {
+    id: 'demo-5',
+    title: 'Missed deadline',
+    content: "I'm really annoyed with myself for missing that important deadline. The team had to scramble because of my mistake.",
+    emotion: 'anger',
+    date: new Date(2025, 4, 10),
+    intensity: 6,
+    tags: ['work', 'stress']
+  }
+];
 
 // Track a streaks record
 interface StreakData {
@@ -244,15 +261,30 @@ interface StreakData {
   lastEntryDate: Date | null;
 }
 
-// --- Removed/Replace Mock/Placeholder functions and objects ---
-// const useUser = () => ({ user: { id: 'mock-user-id' } as any, loading: false }); // Mock
-// const toast = (options: { title: string, description?: string, variant?: string, duration?: number }) => console.log('Toast:', options); // Mock
-// const analyzeEmotionWithModel = async (text: string, client: HfInference | null): Promise<{ emotion: Emotion, intensity: number }> => {
-//   console.log('Analyzing emotion for:', text, 'with client:', client);
-//   // Fallback logic if client is null or API fails
-//   const emotions: Emotion[] = ['joy', 'sadness', 'anger', 'fear', 'neutral'];
-//   return { emotion: emotions[Math.floor(Math.random() * emotions.length)], intensity: Math.floor(Math.random() * 10) + 1 };
-// };
+// --- Mock/Placeholder functions and objects (replace with actual implementations) ---
+const useUser = () => ({ user: { id: 'mock-user-id' } as any, loading: false }); // Mock
+const toast = (options: { title: string, description?: string, variant?: string, duration?: number }) => console.log('Toast:', options); // Mock
+const journalOperations = { // Mock
+  getEntries: async (userId: string): Promise<any[]> => { console.log('Fetching entries for', userId); return []; },
+  saveEntry: async (entry: any): Promise<any> => { console.log('Saving entry', entry); return { ...entry, id: `db-${Date.now()}`, created_at: new Date().toISOString() }; },
+  updateEntry: async (entryId: string, entry: any): Promise<void> => { console.log('Updating entry', entryId, entry); },
+  deleteEntry: async (entryId: string): Promise<void> => { console.log('Deleting entry', entryId); },
+};
+const HuggingFaceConfig = { apiKey: null as string | null }; // Mock
+const analyzeEmotionWithModel = async (text: string, client: HfInference | null): Promise<{ emotion: Emotion, intensity: number }> => {
+  console.log('Analyzing emotion for:', text, 'with client:', client);
+  // Fallback logic if client is null or API fails
+  const emotions: Emotion[] = ['joy', 'sadness', 'anger', 'fear', 'neutral'];
+  return { emotion: emotions[Math.floor(Math.random() * emotions.length)], intensity: Math.floor(Math.random() * 10) + 1 };
+};
+// date-fns mocks (use actual library in project)
+const { format, isToday, isYesterday, subDays, differenceInDays } = {
+    format: (date: Date, fmt: string) => date.toISOString().substring(0, fmt.length), // Simplified mock
+    isToday: (date: Date) => new Date().toDateString() === date.toDateString(),
+    isYesterday: (date: Date) => { const y = new Date(); y.setDate(y.getDate() -1 ); return y.toDateString() === date.toDateString(); },
+    subDays: (date: Date, amount: number) => { const d = new Date(date); d.setDate(d.getDate() - amount); return d;},
+    differenceInDays: (dateLeft: Date, dateRight: Date) => (dateLeft.setHours(0,0,0,0) - dateRight.setHours(0,0,0,0)) / (1000 * 60 * 60 * 24),
+};
 // --- End Mock/Placeholder ---
 
 
@@ -482,7 +514,8 @@ const Journal = () => {
     toast({
       title: `New ${randomEmotion} prompt`,
       description: "A different type of reflection to explore",
-      variant: "default" // Use a less intrusive variant if needed
+      variant: "default", // Use a less intrusive variant if needed
+      duration: 3000
     });
     
     return newPrompt;
@@ -649,67 +682,6 @@ const Journal = () => {
     setSelectedTags([]);
   };
 
-  // Filter and sort entries based on user criteria
-  const getFilteredEntries = () => {
-    if (!entries) return [];
-    
-    let filtered = [...entries];
-    
-    // Filter by emotion
-    if (filterEmotion && filterEmotion !== 'all') {
-      filtered = filtered.filter(entry => entry.emotion === filterEmotion);
-    }
-    
-    // Filter by date
-    if (selectedDate) {
-      filtered = filtered.filter(entry => {
-        const entryDate = new Date(entry.date);
-        return (
-          entryDate.getDate() === selectedDate.getDate() &&
-          entryDate.getMonth() === selectedDate.getMonth() &&
-          entryDate.getFullYear() === selectedDate.getFullYear()
-        );
-      });
-    }
-    
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(entry =>
-        entry.title.toLowerCase().includes(query) ||
-        entry.content.toLowerCase().includes(query) ||
-        (entry.tags && entry.tags.some(tag => tag.toLowerCase().includes(query)))
-      );
-    }
-    
-    // Filter by selected tags
-    if (selectedTags.length > 0) {
-      filtered = filtered.filter(entry =>
-        entry.tags && selectedTags.every(tag => entry.tags.includes(tag))
-      );
-    }
-    
-    // Sort entries
-    switch (sortOrder) {
-      case 'dateDesc':
-        filtered.sort((a, b) => b.date.getTime() - a.date.getTime());
-        break;
-      case 'dateAsc':
-        filtered.sort((a, b) => a.date.getTime() - b.date.getTime());
-        break;
-      case 'emotion':
-        filtered.sort((a, b) => a.emotion.localeCompare(b.emotion));
-        break;
-      case 'title':
-        filtered.sort((a, b) => a.title.localeCompare(b.title));
-        break;
-      default:
-        filtered.sort((a, b) => b.date.getTime() - a.date.getTime());
-    }
-    
-    return filtered;
-  };
-
   // --- Event Handlers ---
 
   const handleEditEntry = (entry: JournalEntry) => {
@@ -769,31 +741,7 @@ const Journal = () => {
     
     setIsSaving(true);
     try {
-      // Use the imported analyzeEmotionWithModel function
-      let emotionResult;
-      try {
-        emotionResult = await analyzeEmotionWithModel(newEntry.content, hfClient);
-      } catch (error) {
-        console.error('Error analyzing emotion:', error);
-        // Fallback if emotion analysis fails
-        emotionResult = {
-          emotion: selectedMood === 'Neutral' ? 'neutral' : 
-                  selectedMood === 'Happy' ? 'joy' : 
-                  selectedMood === 'Sad' ? 'sadness' : 
-                  selectedMood === 'Angry' ? 'anger' : 
-                  selectedMood === 'Anxious' ? 'fear' : 
-                  selectedMood === 'Calm' ? 'love' : 
-                  selectedMood === 'Excited' ? 'surprise' : 'neutral',
-          intensity: energyLevel,
-          confidence: 0.8
-        };
-         toast({
-          title: "Emotion Analysis Fallback",
-          description: "Using selected mood as emotion couldn't be detected automatically.",
-          variant: "default"
-        });
-      }
-      
+      const emotionResult = await analyzeEmotionWithModel(newEntry.content, hfClient);
       const entryTags = extractTags(newEntry.content);
       const currentDate = new Date();
 
@@ -803,17 +751,21 @@ const Journal = () => {
       // If user selected a mood explicitly (other than placeholder 'neutral'), use that.
       // This maps the friendly mood name back to the Emotion type.
       if (selectedMood && selectedMood !== 'Neutral') { // MOODS.name 'Neutral' or default
-          // Map MOOD name back to Emotion type
-          if (selectedMood === 'Happy') finalEmotion = 'joy';
-          else if (selectedMood === 'Sad') finalEmotion = 'sadness';
-          else if (selectedMood === 'Angry') finalEmotion = 'anger';
-          else if (selectedMood === 'Anxious') finalEmotion = 'fear';
-          else if (selectedMood === 'Calm') finalEmotion = 'love'; // As per your emotionToMood
-          else if (selectedMood === 'Excited') finalEmotion = 'surprise';
-          // 'Neutral' case is implicitly handled by emotionResult or if it's the only one not matching
-          
+          const moodObject = MOODS.find(m => m.name === selectedMood);
+          if (moodObject) {
+            // Map MOOD name back to Emotion type
+            // This needs a reverse mapping or careful switch case
+            if (selectedMood === 'Happy') finalEmotion = 'joy';
+            else if (selectedMood === 'Sad') finalEmotion = 'sadness';
+            else if (selectedMood === 'Angry') finalEmotion = 'anger';
+            else if (selectedMood === 'Anxious') finalEmotion = 'fear';
+            else if (selectedMood === 'Calm') finalEmotion = 'love'; // As per your emotionToMood
+            else if (selectedMood === 'Excited') finalEmotion = 'surprise';
+            // 'Neutral' case is implicitly handled by emotionResult or if it's the only one not matching
+          }
           finalIntensity = energyLevel; // Use user-set energy level
       }
+
 
       if (isEditing && editingEntryId) {
         const entryToUpdate = entries.find(e => e.id === editingEntryId);
@@ -1117,72 +1069,9 @@ const Journal = () => {
                     <SelectItem value="neutral">Neutral</SelectItem>
                   </SelectContent>
                 </Select>
-                
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="flex items-center gap-1">
-                      <Filter className="h-4 w-4" />
-                      Tags {selectedTags.length > 0 && `(${selectedTags.length})`}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-4" align="start">
-                    <div className="space-y-2">
-                      <h4 className="font-medium">Filter by tags</h4>
-                      <div className="flex flex-wrap gap-1 max-h-[200px] overflow-y-auto">
-                        {getAllUniqueTags().map(tag => (
-                          <Badge 
-                            key={tag}
-                            variant={selectedTags.includes(tag) ? "default" : "outline"}
-                            className="cursor-pointer"
-                            onClick={() => {
-                              if (selectedTags.includes(tag)) {
-                                setSelectedTags(prev => prev.filter(t => t !== tag));
-                              } else {
-                                setSelectedTags(prev => [...prev, tag]);
-                              }
-                            }}
-                          >
-                            #{tag}
-                          </Badge>
-                        ))}
-                      </div>
-                      {getAllUniqueTags().length === 0 && (
-                        <p className="text-sm text-muted-foreground">No tags found in your entries</p>
-                      )}
-                      {selectedTags.length > 0 && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => setSelectedTags([])}
-                          className="mt-2 w-full"
-                        >
-                          Clear tags
-                        </Button>
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                
-                <Select 
-                  value={sortOrder} 
-                  onValueChange={(value) => setSortOrder(value as SortOption)}
-                >
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dateDesc">Newest first</SelectItem>
-                    <SelectItem value="dateAsc">Oldest first</SelectItem>
-                    <SelectItem value="emotion">By emotion</SelectItem>
-                    <SelectItem value="title">By title</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
               
               <div className="flex items-center space-x-2">
-                <Button onClick={resetFilters} variant="outline" className="gap-1" disabled={!searchQuery && !selectedDate && filterEmotion === 'all' && sortOrder === 'dateDesc'}>
-                  <RefreshCw className="h-4 w-4" /> Reset
-                </Button>
                 <Button onClick={() => setIsWriting(true)} className="gap-1">
                   <PlusCircle className="h-4 w-4" /> New Entry
                 </Button>
@@ -1212,99 +1101,74 @@ const Journal = () => {
               </Card>
             ) : (
               <div className="space-y-4">
-                {getFilteredEntries().length === 0 ? (
-                  <Card className="p-8 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                      <Search className="h-12 w-12 text-muted-foreground" />
-                      <h3 className="text-xl font-semibold">No matching entries</h3>
-                      <p className="text-muted-foreground max-w-md mx-auto">
-                        No entries match your current filters. Try adjusting your search or filters.
-                      </p>
-                      <Button onClick={resetFilters} className="mt-2">
-                        Reset Filters
+                {entries.map((entry) => (
+                  <Card key={entry.id} className="overflow-hidden">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <CardTitle className="flex items-center gap-2">
+                            {entry.title}
+                            <span className="text-xl">{getMoodEmojiFromEmotion(entry.emotion)}</span>
+                          </CardTitle>
+                          <CardDescription>
+                            {isToday(entry.date) ? 'Today' : 
+                             isYesterday(entry.date) ? 'Yesterday' : 
+                             format(entry.date, 'PPP')}
+                          </CardDescription>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditEntry(entry)} aria-label="Edit entry">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" onClick={() => setEntryToDelete(entry.id)} aria-label="Delete entry">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Journal Entry</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this entry? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pb-3">
+                      <div className="line-clamp-3 text-sm">
+                        {entry.content}
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex justify-between pt-0">
+                      <div className="flex flex-wrap gap-1">
+                        {entry.tags && entry.tags.map((tag) => (
+                          <Badge key={tag} variant="secondary" className="text-xs">
+                            #{tag}
+                          </Badge>
+                        ))}
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => viewEntryDetails(entry)} className="ml-auto">
+                        View <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
-                    </div>
+                    </CardFooter>
                   </Card>
-                ) : (
-                  getFilteredEntries().map((entry) => (
-                    <Card key={entry.id} className="overflow-hidden">
-                      <CardHeader className="pb-3">
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-1">
-                            <CardTitle className="flex items-center gap-2">
-                              {entry.title}
-                              <span className="text-xl">{getMoodEmojiFromEmotion(entry.emotion)}</span>
-                            </CardTitle>
-                            <CardDescription>
-                              {isToday(entry.date) ? 'Today' : 
-                               isYesterday(entry.date) ? 'Yesterday' : 
-                               format(entry.date, 'PPP')}
-                            </CardDescription>
-                          </div>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditEntry(entry)} aria-label="Edit entry">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={() => setEntryToDelete(entry.id)} aria-label="Delete entry">
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Journal Entry</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete this entry? This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pb-3">
-                        <div className="line-clamp-3 text-sm">
-                          {entry.content}
-                        </div>
-                      </CardContent>
-                      <CardFooter className="flex justify-between pt-0">
-                        <div className="flex flex-wrap gap-1">
-                          {entry.tags && entry.tags.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
-                              #{tag}
-                            </Badge>
-                          ))}
-                        </div>
-                        <Button variant="ghost" size="sm" onClick={() => viewEntryDetails(entry)} className="ml-auto">
-                          View <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                      </CardFooter>
-                    </Card>
-                  ))
-                )}
+                ))}
               </div>
             )}
           </TabsContent>
           
           {/* Insights Tab */}
           <TabsContent value="insights" className="space-y-4">
-            <div className="flex justify-between">
-              <h3 className="text-lg font-medium">Your Emotional Journey</h3>
-              <Button 
-                variant="outline" 
-                className="gap-1 text-destructive" 
-                onClick={() => setShowClearAllDialog(true)}
-              >
-                <Trash2 className="h-4 w-4" /> Clear All Entries
-              </Button>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Emotion Distribution */}
               <Card>
@@ -1509,11 +1373,9 @@ const Journal = () => {
               </DialogHeader>
               
               <div className="space-y-4">
-                <ScrollArea className="h-[300px] pr-4">
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown>{selectedEntry.content}</ReactMarkdown>
-                  </div>
-                </ScrollArea>
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown>{selectedEntry.content}</ReactMarkdown>
+                </div>
                 
                 {selectedEntry.tags && selectedEntry.tags.length > 0 && (
                   <div className="flex flex-wrap gap-1">
@@ -1525,36 +1387,31 @@ const Journal = () => {
               </div>
               
               <DialogFooter>
-                <div className="flex gap-2 w-full justify-between">
-                  <Button variant="outline" onClick={() => setShowDetailModal(false)}>
-                    Close
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => selectedEntry && handleEditEntry(selectedEntry)}>
+                    <Edit className="mr-2 h-4 w-4" /> Edit
                   </Button>
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => selectedEntry && handleEditEntry(selectedEntry)}>
-                      <Edit className="mr-2 h-4 w-4" /> Edit
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" className="text-destructive" onClick={() => selectedEntry && setEntryToDelete(selectedEntry.id)}>
-                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Journal Entry</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete this entry? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="text-destructive" onClick={() => selectedEntry && setEntryToDelete(selectedEntry.id)}>
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Journal Entry</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete this entry? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </DialogFooter>
             </DialogContent>

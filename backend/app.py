@@ -4,8 +4,13 @@ import httpx
 import os
 import json
 import random
+import time
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = FastAPI(title="MindMate Emotions API")
 
@@ -18,13 +23,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Update OpenRouter configuration
-OPENROUTER_API_KEY = "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"
+# API Keys and configuration
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 QWEN_3_MODEL = "openai/gpt-3.5-turbo"  # Changed from qwen/qwen1.5-72b-chat to a more common model
 
+# Hugging Face API configuration
+HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
+HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/"
+EMOTION_MODEL = "SamLowe/roberta-base-go_emotions"
+SENTIMENT_MODEL = "cardiffnlp/twitter-roberta-base-sentiment-latest"
+
 # Development mode flag - set to True to use mock responses instead of real API calls
-DEV_MODE = False  # Changed to False to enable real API responses
+DEV_MODE = os.getenv("DEV_MODE", "False").lower() == "true"
 
 # Models for request validation
 class Message(BaseModel):
@@ -84,7 +95,52 @@ class RefreshCacheRequest(BaseModel):
 @app.get("/status")
 async def status():
     """Check API status"""
-    return {"status": "online", "message": "MindMate Emotions API is running"}
+    hf_api_available = bool(HUGGINGFACE_API_KEY)
+    openrouter_api_available = bool(OPENROUTER_API_KEY)
+    
+    return {
+        "status": "online", 
+        "message": "MindMate Emotions API is running",
+        "apis": {
+            "huggingface": "available" if hf_api_available else "not configured",
+            "openrouter": "available" if openrouter_api_available else "not configured"
+        }
+    }
+
+# Helper function for Hugging Face API calls
+async def query_huggingface_api(text: str, model: str):
+    """Query Hugging Face API with the given text and model"""
+    if not HUGGINGFACE_API_KEY:
+        raise HTTPException(status_code=500, detail="Hugging Face API key not configured")
+    
+    headers = {
+        "Authorization": f"Bearer {HUGGINGFACE_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "inputs": text,
+        "options": {
+            "wait_for_model": True
+        }
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"{HUGGINGFACE_API_URL}{model}",
+                headers=headers,
+                json=payload
+            )
+            
+            if response.status_code != 200:
+                print(f"Hugging Face API error: {response.status_code}, {response.text}")
+                return None
+            
+            return response.json()
+    except Exception as e:
+        print(f"Error querying Hugging Face API: {e}")
+        return None
 
 @app.get("/message/encouragement/{emotion}")
 async def get_encouragement_message(emotion: str):
@@ -178,11 +234,33 @@ async def refresh_cache(request: RefreshCacheRequest = Body(...)):
 
 @app.post("/detect-emotion")
 async def detect_emotion(request: EmotionDetectionRequest):
-    """Detect emotion from text using OpenRouter API with Qwen 3 model"""
+    """Detect emotion from text using either Hugging Face API or OpenRouter API"""
     if not request.text or len(request.text.strip()) < 3:
         return {"emotion": "neutral", "confidence": 0.5}
         
     try:
+        # First try using Hugging Face API if available
+        if HUGGINGFACE_API_KEY:
+            start_time = time.time()
+            result = await query_huggingface_api(request.text, EMOTION_MODEL)
+            
+            if result:
+                # Process Hugging Face emotion results
+                emotions = result[0]
+                # Find the emotion with the highest score
+                top_emotion = max(emotions, key=lambda x: x['score'])
+                
+                # Map the emotion label to our standard set
+                emotion = map_emotion(top_emotion['label'])
+                
+                return {
+                    "emotion": emotion,
+                    "confidence": top_emotion['score'],
+                    "processed_time": time.time() - start_time,
+                    "model_used": "huggingface"
+                }
+        
+        # Fallback to OpenRouter API
         messages = [
             {
                 "role": "system",
@@ -205,58 +283,101 @@ async def detect_emotion(request: EmotionDetectionRequest):
                 json={
                     "model": QWEN_3_MODEL,
                     "messages": messages,
-                    "max_tokens": 300,
-                    "temperature": 0.7,
+                    "max_tokens": 100,
+                    "temperature": 0.1,
+                    "response_format": {"type": "json_object"}
                 }
             )
             
             if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, 
-                                   detail=f"OpenRouter API error: {response.status_code}")
+                print(f"OpenRouter API error: {response.status_code}, {response.text}")
+                # Fallback to rule-based approach
+                return rule_based_emotion_detection(request.text)
                 
             result = response.json()
-            content = result["choices"][0]["message"]["content"]
-            
-            # Extract JSON from the response - model might wrap it in backticks
             try:
-                # Try various ways to extract the JSON response
-                if "```json" in content:
-                    json_str = content.split("```json")[1].split("```")[0].strip()
-                elif "```" in content:
-                    json_str = content.split("```")[1].strip()
-                elif "{" in content and "}" in content:
-                    # Extract the text between the first { and last }
-                    start = content.find("{")
-                    end = content.rfind("}") + 1
-                    json_str = content[start:end].strip()
-                else:
-                    json_str = content
-                
-                emotion_result = json.loads(json_str)
-                
-                # Validate the response
-                if "emotion" in emotion_result and "confidence" in emotion_result:
-                    return {
-                        "emotion": emotion_result["emotion"].lower(),
-                        "confidence": min(max(emotion_result["confidence"], 0), 1),
-                        "intensity": int(min(max(emotion_result["confidence"], 0), 1) * 10)
-                    }
-                else:
-                    # Fallback for malformed responses
-                    return {"emotion": "neutral", "confidence": 0.5, "intensity": 5}
-                    
-            except Exception as e:
-                print(f"Error parsing JSON: {e}")
-                print(f"Original content: {content}")
-                # Best-effort fallback
-                for emotion in ["joy", "sadness", "anger", "fear", "surprise", "love", "neutral"]:
-                    if emotion in content.lower():
-                        return {"emotion": emotion, "confidence": 0.7, "intensity": 7}
-                return {"emotion": "neutral", "confidence": 0.5, "intensity": 5}
+                content = result["choices"][0]["message"]["content"]
+                emotion_data = json.loads(content)
+                return {
+                    "emotion": emotion_data.get("emotion", "neutral"),
+                    "confidence": emotion_data.get("confidence", 0.5),
+                    "model_used": "openrouter"
+                }
+            except (KeyError, json.JSONDecodeError) as e:
+                print(f"Error parsing OpenRouter response: {e}")
+                # Fallback to rule-based approach
+                return rule_based_emotion_detection(request.text)
                 
     except Exception as e:
-        print(f"Error processing request: {e}")
-        return {"emotion": "neutral", "confidence": 0.5, "intensity": 5}
+        print(f"Error in emotion detection: {e}")
+        # Fallback to rule-based approach
+        return rule_based_emotion_detection(request.text)
+
+# Helper function to map emotion labels
+def map_emotion(label: str) -> str:
+    """Map Hugging Face emotion labels to our standard set"""
+    # Map from the 28 GoEmotions categories to our simplified set
+    positive_emotions = ["admiration", "amusement", "approval", "caring", "desire", 
+                         "excitement", "gratitude", "joy", "love", "optimism", "pride", 
+                         "relief"]
+    negative_emotions = ["anger", "annoyance", "disappointment", "disapproval", 
+                         "disgust", "embarrassment", "fear", "grief", "nervousness", 
+                         "remorse", "sadness"]
+    surprise_emotions = ["confusion", "curiosity", "realization", "surprise"]
+    
+    label = label.lower()
+    
+    if label in positive_emotions or label == "joy":
+        return "joy"
+    elif label in negative_emotions:
+        if label in ["anger", "annoyance", "disapproval", "disgust"]:
+            return "anger"
+        elif label in ["fear", "nervousness"]:
+            return "fear"
+        else:
+            return "sadness"
+    elif label in surprise_emotions:
+        return "surprise"
+    else:
+        return "neutral"
+
+# Rule-based emotion detection as fallback
+def rule_based_emotion_detection(text: str) -> dict:
+    """Simple rule-based emotion detection as fallback"""
+    text = text.lower()
+    
+    # Simple keyword matching
+    joy_words = ["happy", "joy", "delighted", "glad", "pleased", "excited", "wonderful"]
+    sad_words = ["sad", "unhappy", "depressed", "miserable", "down", "blue", "upset", "disappointed"]
+    anger_words = ["angry", "mad", "furious", "annoyed", "irritated", "frustrated"]
+    fear_words = ["afraid", "scared", "frightened", "terrified", "anxious", "worried", "nervous"]
+    
+    # Count occurrences
+    joy_count = sum(1 for word in joy_words if word in text)
+    sad_count = sum(1 for word in sad_words if word in text)
+    anger_count = sum(1 for word in anger_words if word in text)
+    fear_count = sum(1 for word in fear_words if word in text)
+    
+    # Find the dominant emotion
+    counts = {
+        "joy": joy_count,
+        "sadness": sad_count,
+        "anger": anger_count,
+        "fear": fear_count
+    }
+    
+    if all(count == 0 for count in counts.values()):
+        return {"emotion": "neutral", "confidence": 0.5, "model_used": "rule-based"}
+    
+    dominant_emotion = max(counts, key=counts.get)
+    total = sum(counts.values())
+    confidence = counts[dominant_emotion] / total if total > 0 else 0.5
+    
+    return {
+        "emotion": dominant_emotion,
+        "confidence": confidence,
+        "model_used": "rule-based"
+    }
 
 @app.post("/personalized-recommendations")
 async def get_recommendations(request: RecommendationRequest):

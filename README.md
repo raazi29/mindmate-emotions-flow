@@ -1,291 +1,273 @@
-# Welcome to your Lovable project
-
-## Project info
-
-**URL**: https://lovable.dev/projects/29b0d5f9-c01c-4b35-9a31-7e52a4e45c6c
-
-## How can I edit this code?
-
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/29b0d5f9-c01c-4b35-9a31-7e52a4e45c6c) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/29b0d5f9-c01c-4b35-9a31-7e52a4e45c6c) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
-
 # MindMate Emotions Flow
 
-A React application that analyzes emotions using AI models and provides personalized insights, recommendations, and resources to support emotional wellbeing.
+A comprehensive mental wellness application that helps users understand, track, and manage their emotions through AI-powered analysis, journaling, and personalized resources.
 
-## Quick Start
+## 🌟 Overview
 
-```sh
-# Install dependencies
-npm install
+MindMate Emotions Flow combines advanced AI emotion analysis with practical wellness tools to create a complete emotional wellbeing ecosystem. The app features real-time emotion detection, intelligent journaling, curated resources, and voice integration to support users on their mental health journey.
 
-# Start development server
-.\run.ps1 dev
+## ✨ Features
 
-# Or use npm directly
-npm run dev
-```
+### 🧠 AI-Powered Emotion Analysis
+- Real-time emotion detection from text using Qwen 3 AI model via OpenRouter API
+- Voice-to-text capability for hands-free emotion analysis
+- Advanced ML backend with intelligent local fallback using Hugging Face transformers
+- Emotion history tracking and pattern recognition
 
-## Project Structure
+### 📝 Smart Journaling System
+- Rich text editor with automatic emotion analysis
+- Tag support using hashtags (#work, #personal, #health)
+- Offline-first architecture with Supabase synchronization
+- Journal streaks tracking and mood analytics
+- Media attachments support (images, audio)
+- Privacy-focused with row-level security
 
-- `/src` - Main application source code
-- `/public` - Static assets
-- `/scripts` - Utility scripts organized by purpose:
-  - `/dev` - Development scripts and startup files
-  - `/testing` - Testing utilities and data insertion tools
-  - `/deployment` - Docker and deployment configurations
-  - `/setup` - Service setup and configuration scripts
-- `/backend` - Python FastAPI backend for AI features
-- `/supabase` - Supabase database configuration
+### 📚 Personalized Resource Library
+- Curated articles, videos, exercises, and meditations
+- AI-powered content recommendations based on emotional state
+- Text-to-speech integration for accessibility
+- Progress tracking and bookmarking system
+- Emotion-specific voice tones and characteristics
 
-## Key Commands
+### 📊 Analytics & Insights
+- Interactive emotion trends visualization
+- Personalized insights and suggestions
+- Most frequent emotions and patterns analysis
+- Mood comparison over time
+- Tag-based content organization
 
-Use the PowerShell runner script for common tasks:
+## 🛠️ Tech Stack
 
-```powershell
-.\run.ps1 [command]
-```
+**Frontend:**
+- React 18 with TypeScript
+- TailwindCSS + shadcn/ui components
+- Framer Motion for animations
+- React Router for navigation
+- Recharts for data visualization
 
-Available commands:
-- `dev` - Start the development environment
-- `test` - Run tests or insert test data
-- `deploy` - Deploy the application with Docker
-- `setup` - Setup required services
+**Backend:**
+- FastAPI (Python) for ML services
+- Express.js (Node.js) for API layer
+- Hugging Face Transformers for local emotion analysis
+- PyTorch for ML model inference
 
-## Core Features
+**Database & Services:**
+- Supabase for authentication and data storage
+- IndexedDB for offline functionality
+- OpenRouter API for advanced AI features
+- Firebase integration for additional services
 
-### Emotion Analysis
-- Real-time emotion detection from text input
-- Voice-to-text capability for hands-free analysis
-- ML-powered analysis with local fallback
+**Development & Deployment:**
+- Vite for fast development and building
+- Docker & Docker Compose for containerization
+- ESLint + TypeScript for code quality
+- Concurrently for running multiple services
 
-### Personalized Insights
-- Emotion-specific insights and suggestions
-- Interactive trends visualization
-- Dynamic content generation based on emotional state
-
-### Journal with Database Integration
-- Create, edit, and track journal entries
-- Automatic emotion analysis of journal content
-- Offline-first with Supabase sync when online
-
-### Resource Library
-- Curated articles, videos, and exercises
-- AI voice integration with text-to-speech
-- Emotion-specific recommendations
-
-## Tech Stack
-
-- **Frontend**: React, TypeScript, TailwindCSS, shadcn/ui
-- **Backend**: FastAPI (Python), Express.js (Node)
-- **Database**: Supabase
-- **AI**: Hugging Face, OpenRouter API (Qwen 3)
-
-## Environment Setup
-
-1. Create a `.env.local` file with required keys:
-```
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_key
-```
-
-2. For AI features, add API keys to backend/app.py
-
-## Development
-
-- Run frontend: `npm run dev`
-- Run backend: `npm run dev:backend`
-- Run both: `npm run dev:complete`
-
-## Deployment
-
-- Build for production: `npm run build`
-- Using Docker: `.\run.ps1 deploy`
-
-## License
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-# MindMate Journal with Supabase Integration
-
-A journal application with emotion analysis and Supabase database integration for persistent storage.
-
-## Features
-
-- Journal entry creation, editing, and deletion
-- Emotional analysis of journal content
-- Tag support using hashtags
-- Journal streaks tracking
-- Mood comparison and analytics
-- Database storage with Supabase
-- Offline mode support
-
-## Setup
+## 🚀 Quick Start
 
 ### Prerequisites
-
-- Node.js and npm
-- A Supabase account and project
-
-### Installation
-
-1. Clone the repository
-2. Install dependencies:
-
-```bash
-npm install
-```
-
-3. Create a `.env.local` file in the project root with your Supabase credentials:
-
-```
-VITE_SUPABASE_URL=https://zxzcbzghdvlqnoallkfk.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4emNiemdoZHZscW5vYWxsa2ZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYyNjY4MzksImV4cCI6MjA2MTg0MjgzOX0.qcHM9XMX-3TAr_y7pZ-N4deQnH0DWZRukafaq0u7PLA
-```
-
-4. Start the development server:
-
-```bash
-npm run dev
-```
-
-## Supabase Setup
-
-To set up the required database schema in Supabase:
-
-1. Go to your Supabase project dashboard
-2. Navigate to the SQL Editor
-3. Create a new query and paste the contents of `supabase/schema.sql`
-4. Run the SQL script to create the journal_entries table and set up row-level security
-
-## Usage
-
-### Authentication
-
-For demonstration purposes, the app uses a mock user with ID 'demo-user-123'. In a production environment, you should implement proper authentication using Supabase Auth.
-
-### Journal Entries
-
-- Create new entries from the Entries tab
-- Entries are automatically analyzed for emotions
-- Add tags using hashtags in your content (e.g., #work, #personal)
-- Edit or delete entries as needed
-
-### Analytics
-
-The Analytics tab provides insights into your emotional patterns over time, including:
-- Emotion distribution
-- Most frequent emotions
-- Personalized suggestions
-
-### Offline Mode
-
-If the connection to Supabase fails, the app will switch to offline mode, storing changes locally until a connection can be reestablished.
-
-## Database Schema
-
-The application uses the following schema in Supabase:
-
-```sql
-CREATE TABLE public.journal_entries (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  content TEXT NOT NULL,
-  emotion TEXT NOT NULL,
-  emotion_intensity SMALLINT,
-  tags TEXT[],
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now()),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
-);
-```
-
-Row-level security is enabled to ensure users can only access their own journal entries.
-
-# MindMate - Emotion Wellness App with AI Voice Features
-
-MindMate is a comprehensive mental wellness application that helps users understand, track, and manage their emotions. The application has been enhanced with AI-powered text-to-speech capabilities to make resources more accessible.
-
-## Features
-
-- **Emotion Detection**: Real-time emotion analysis using the Qwen 3 AI model through OpenRouter API
-- **Resource Library**: Curated articles, videos, and exercises for emotional wellness
-- **Interactive Resources**: Dynamic content with emotion check-ins and personalized feedback
-- **AI Voice Integration**: Text-to-speech functionality for all resources
-- **AI Summaries**: Automatic summarization of long-form content for quicker consumption
-- **Emotion-Specific Voice Tones**: Voice characteristics adapting to emotional context
-
-## Getting Started
-
-### Prerequisites
-
 - Node.js (v16+)
 - Python (v3.8+)
-- npm or yarn
+- A Supabase account and project
 
-### Installation
+### Easy Setup
+Use our automated setup script:
 
-1. Clone the repository
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/mindmate-emotions-flow.git
+cd mindmate-emotions-flow
+
+# Run automated setup (installs all dependencies)
+mindmate.bat setup
+# or
+npm run app:setup
+
+# Quick start both frontend and backend
+start-app.bat
+# or
+npm run app:quick
+```
+
+### Manual Setup
+
+1. **Install dependencies:**
+   ```bash
+   npm install
+   cd backend && pip install -r requirements.txt
    ```
+
+2. **Configure environment:**
+   Create `.env.local` in the project root:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_key
+   ```
+
+3. **Setup database:**
+   - Go to your Supabase project dashboard
+   - Navigate to SQL Editor
+   - Run the contents of `supabase/schema.sql`
+
+4. **Start development servers:**
+   ```bash
+   npm run dev:complete  # Starts both frontend and backend
+   ```
+
+### Application URLs
+- **Frontend:** http://localhost:8080
+- **Backend API:** http://localhost:8000
+- **API Documentation:** http://localhost:8000/docs
+
+## 📁 Project Structure
+
+```
+mindmate-emotions-flow/
+├── src/                    # Frontend React application
+│   ├── components/         # Reusable UI components
+│   ├── contexts/          # React context providers
+│   ├── hooks/             # Custom React hooks
+│   ├── lib/               # Shared utilities and libraries
+│   ├── pages/             # Page components and routing
+│   ├── types/             # TypeScript type definitions
+│   └── utils/             # Helper functions
+├── backend/               # Python FastAPI backend
+│   ├── app.py            # Main FastAPI application
+│   ├── requirements.txt   # Python dependencies
+│   └── Dockerfile        # Backend container config
+├── supabase/             # Database configuration
+│   ├── schema.sql        # Database schema and policies
+│   └── README.md         # Database setup instructions
+├── public/               # Static assets
+├── docker-compose.yml    # Multi-container setup
+├── package.json          # Node.js dependencies and scripts
+└── README.md            # This file
+```
+
+## 💻 Development
+
+### Available Scripts
+
+**Quick Commands:**
+```bash
+mindmate.bat start     # Start both services
+mindmate.bat stop      # Stop all services
+mindmate.bat restart   # Restart services
+start-app.bat         # Quick development start
+```
+
+**NPM Scripts:**
+```bash
+npm run dev           # Frontend only
+npm run dev:backend   # Backend only  
+npm run dev:complete  # Both services concurrently
+npm run build         # Production build
+npm run start:all     # Production mode
+```
+
+**Database Operations:**
+```bash
+npm run supabase:deploy    # Deploy schema to Supabase
+npm run supabase:export    # Export current schema
+npm run test:supabase      # Test database connection
+```
+
+### Development Workflow
+
+1. **Start development environment:**
+   ```bash
+   start-app.bat  # Opens two terminals
+   ```
+
+2. **Make changes to code** - Hot reload is enabled for both frontend and backend
+
+3. **Test your changes** using the provided test scripts
+
+4. **Database changes:** Update `supabase/schema.sql` and run deployment script
+
+## 🐳 Deployment
+
+### Docker Deployment
+```bash
+# Build and start with Docker Compose
+docker-compose up --build
+
+# Or use the deployment script
+npm run deploy
+```
+
+### Manual Production Deployment
+```bash
+# Build frontend
+npm run build
+
+# Start production servers
+npm run start:all
+```
+
+The application will be available at:
+- Frontend: http://localhost:3000
+- Backend: http://localhost:8000
+
+## 🔧 Configuration
+
+### Environment Variables
+Create `.env.local` with:
+```env
+# Supabase Configuration
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# Optional: OpenRouter API for advanced AI features
+OPENROUTER_API_KEY=your_openrouter_key
+
+# Backend Configuration (optional)
+BACKEND_URL=http://localhost:8000
+```
+
+### Supabase Setup
+The application uses Supabase for:
+- User authentication and profiles
+- Journal entries storage with RLS
+- Real-time synchronization
+- File attachments storage
+
+Run `supabase/schema.sql` in your Supabase SQL editor to set up all required tables and policies.
+
+## 🧪 Testing
+
+```bash
+# Test Supabase connection
+npm run test:supabase
+
+# Create test journal entries
+npm run supabase:create-test
+
+# Test emotion detection API
+npm run test:emotion
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Hugging Face](https://huggingface.co/) for transformer models
+- [Supabase](https://supabase.com/) for backend services
+- [shadcn/ui](https://ui.shadcn.com/) for beautiful UI components
+- [OpenRouter](https://openrouter.ai/) for AI API access
+
+---
+
+**Made with ❤️ for mental wellness**
+
+For support or questions, please open an issue on GitHub.

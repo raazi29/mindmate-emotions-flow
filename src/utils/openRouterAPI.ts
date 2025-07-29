@@ -2,7 +2,7 @@
 // Direct implementation without backend dependency
 
 // OpenRouter API key - using environment variable with fallback
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || "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";
+const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const QWEN_MODEL = "qwen/qwen1.5-72b-chat";
 
 // Detect emotion using Qwen 3 model directly via OpenRouter

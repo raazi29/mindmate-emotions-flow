@@ -26,7 +26,12 @@
     "supabase:create-test": "tsx src/create-test-entry.ts",
     "supabase:simulate": "tsx src/simulate-journal-usage.ts",
     "supabase:direct-test": "tsx src/direct-test-entry.ts",
-    "supabase:check-tables": "tsx src/check-supabase-tables.ts"
+    "supabase:check-tables": "tsx src/check-supabase-tables.ts",
+    "app:start": "mindmate.bat start",
+    "app:stop": "mindmate.bat stop",
+    "app:restart": "mindmate.bat restart",
+    "app:quick": "start-app.bat",
+    "app:setup": "mindmate.bat setup"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -107,7 +112,6 @@
     "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "eslint-plugin-react-refresh": "^0.4.9",
     "globals": "^15.9.0",
-    "lovable-tagger": "^1.1.7",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.11",
     "tsx": "^4.7.0",

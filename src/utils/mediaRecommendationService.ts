@@ -204,7 +204,7 @@ async function fetchAIMediaRecommendations(emotion: string, intensity?: number):
   // First check if OpenRouter is available
   try {
     // Try to get the API key
-    const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || "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";
+    const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
     const QWEN_3_MODEL = "qwen/qwen1.5-72b-chat";
     
     if (!OPENROUTER_API_KEY) {

@@ -480,7 +480,7 @@ const EmotionalInsightML: React.FC<EmotionalInsightMLProps> = ({
         <div className="flex justify-between items-center">
           <CardTitle className="flex items-center gap-2">
             <Brain className="h-5 w-5 text-primary" />
-            ML-Powered Emotional Intelligence
+            Emotional Intelligence
           </CardTitle>
           <div className={`text-xs px-2 py-1 rounded-full ${
             modelStatus === 'ready' ? 'bg-green-200 text-green-900 dark:bg-green-800 dark:text-green-200' : 
