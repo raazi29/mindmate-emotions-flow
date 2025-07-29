@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import PerformanceMonitor from '@/components/PerformanceMonitor';
 import LoadingFallback from '@/components/LoadingFallback';
+import TestAuth from '@/components/TestAuth';
 import { useNavigate } from 'react-router-dom';
 
 type Emotion = 'joy' | 'sadness' | 'anger' | 'fear' | 'love' | 'surprise' | 'neutral';

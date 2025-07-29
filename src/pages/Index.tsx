@@ -3,10 +3,9 @@ import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Brain } from 'lucide-react';
+import { SignedIn, SignedOut } from '@/contexts/MockAuthContext';
 
 const Index = () => {
-  // Always assume we have a user now - no auth checking
-  const user = { id: 'demo-user-123' };
   
   return (
     <div className="min-h-screen flex flex-col bg-gradient-radial from-primary/5 via-background to-background">
@@ -27,8 +26,11 @@ const Index = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 animate-fade-in w-full sm:w-auto px-4 sm:px-0">
-              <Button size="lg" className="w-full sm:w-auto" asChild>
-                <Link to="/dashboard">Go to Dashboard</Link>
+            <Button size="lg" className="w-full sm:w-auto" asChild>
+              <Link to="/dashboard">Go to Dashboard</Link>
+            </Button>
+            <Button size="lg" variant="outline" className="w-full sm:w-auto" asChild>
+              <Link to="/journal">Start Journaling</Link>
             </Button>
           </div>
           

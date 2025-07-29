@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { SignedIn, SignedOut, UserButton, useUser } from '@/contexts/MockAuthContext';
 import {
   Sheet,
   SheetContent,
@@ -32,20 +33,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// Mock user data to replace useAuth
-const mockUser = { 
-  id: 'demo-user-123',
-  email: 'demo@example.com'
-};
-
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  
-  // Mock auth data
-  const user = mockUser;
-  const isLoading = false;
+  const { user, isLoaded } = useUser();
   
   // Function to check if a route is active
   const isActive = (path: string) => location.pathname === path;
@@ -60,15 +52,10 @@ const Navbar = () => {
     isActive(path) ? 'text-primary bg-muted' : 'hover:text-primary hover:bg-muted/50'
   }`;
 
-  // Handle sign out - no-op since auth is removed
-  const handleSignOut = async () => {
-      navigate('/');
-  };
-
   // Get user's initials for avatar fallback
   const getUserInitials = () => {
-    if (!user?.email) return 'U';
-    return user.email.substring(0, 1).toUpperCase();
+    if (!user?.firstName && !user?.lastName) return 'U';
+    return `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`.toUpperCase();
   };
 
   return (
@@ -184,54 +171,27 @@ const Navbar = () => {
                 </SheetClose>
               </div>
               <div className="flex flex-col gap-2 p-4 mt-auto border-t">
-                    <div className="flex items-center gap-2 mb-2 px-1">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback>{getUserInitials()}</AvatarFallback>
-                      </Avatar>
-                      <div className="text-sm font-medium truncate">
-                        {user.email}
-                      </div>
+                <SignedIn>
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.imageUrl} />
+                      <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                    </Avatar>
+                    <div className="text-sm font-medium truncate">
+                      {user?.firstName} {user?.lastName}
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="w-full justify-center"
-                      onClick={handleSignOut}
-                    >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign Out
-                    </Button>
+                  </div>
+                  <UserButton />
+                </SignedIn>
               </div>
             </SheetContent>
           </Sheet>
           
           {/* User menu - hidden on mobile */}
           <div className="hidden md:flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback>{getUserInitials()}</AvatarFallback>
-                    </Avatar>
-                    <span className="hidden sm:inline-block">
-                      {user.email?.split('@')[0]}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Demo User</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/profile')}>
-                    <User className="h-4 w-4 mr-2" />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
           </div>
         </div>
       </div>

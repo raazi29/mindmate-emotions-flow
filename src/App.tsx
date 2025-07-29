@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider, useTheme } from "@/components/ThemeProvider";
+import { MockAuthProvider } from '@/contexts/MockAuthContext';
 import { useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import Index from "./pages/Index";
@@ -16,6 +17,7 @@ import ChatroomSetup from "./pages/ChatroomSetup";
 import SupabaseTest from "./pages/SupabaseTest";
 import EmotionsFlow from "./pages/EmotionsFlow";
 import SafetyPrivacy from "./pages/SafetyPrivacy";
+
 
 const queryClient = new QueryClient();
 
@@ -50,29 +52,31 @@ const ThemeToggleHandler = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="system" storageKey="mindmate-theme">
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
+  <MockAuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="system" storageKey="mindmate-theme">
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
           <ThemeToggleHandler />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/journal" element={<Journal />} />
-            <Route path="/resources" element={<Resources />} />
-            <Route path="/chat" element={<AnonymousChatrooms />} />
-            <Route path="/chat/setup" element={<ChatroomSetup />} />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/journal" element={<Journal />} />
+              <Route path="/resources" element={<Resources />} />
+              <Route path="/chat" element={<AnonymousChatrooms />} />
+              <Route path="/chat/setup" element={<ChatroomSetup />} />
               <Route path="/chat/test" element={<SupabaseTest />} />
-            <Route path="/emotions-flow" element={<EmotionsFlow />} />
-            <Route path="/safety-privacy" element={<SafetyPrivacy />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+              <Route path="/emotions-flow" element={<EmotionsFlow />} />
+              <Route path="/safety-privacy" element={<SafetyPrivacy />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </MockAuthProvider>
 );
 
 export default App;

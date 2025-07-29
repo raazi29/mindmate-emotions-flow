@@ -24,6 +24,22 @@ export const useAuth = () => {
   return context;
 };
 
+// Create a hook that mimics Clerk's useUser for compatibility
+export const useUser = () => {
+  const { user, loading } = useAuth();
+  return {
+    user: user ? {
+      id: user.id,
+      firstName: user.user_metadata?.name?.split(' ')[0] || '',
+      lastName: user.user_metadata?.name?.split(' ')[1] || '',
+      imageUrl: user.user_metadata?.avatar_url || '',
+      emailAddresses: [{ emailAddress: user.email || '' }]
+    } : null,
+    isLoaded: !loading,
+    isSignedIn: !!user
+  };
+};
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -40,11 +56,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) {
           console.error('Error getting session:', error);
-          toast({
-            title: "Session Error",
-            description: "Failed to retrieve session. Please try logging in again.",
-            variant: "destructive",
-          });
         } else {
           setSession(session);
           setUser(session?.user ?? null);
