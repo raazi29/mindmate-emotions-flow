@@ -22,7 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import VoiceInput from '@/components/VoiceInput';
 import VoiceOutput from '@/components/VoiceOutput';
 import { journalService, JournalEntry } from '@/services/JournalService';
-import { useUser } from '@/contexts/MockAuthContext';
+import { useUser } from '@/contexts/SupabaseAuthContext';
 import { toast } from '@/hooks/use-toast';
 
 interface EnhancedJournalEntryProps {

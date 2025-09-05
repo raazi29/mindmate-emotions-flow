@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/SupabaseConfig';
-import { detectEmotionOpenRouter } from '@/utils/openRouterAPI';
+import { detectEmotion } from '@/utils/emotionService';
 
 export interface JournalEntry {
   id: string;
@@ -108,7 +108,7 @@ class JournalService {
 
   private async analyzeEmotion(text: string): Promise<{ emotion: string; confidence: number; intensity: number }> {
     try {
-      const result = await detectEmotionOpenRouter(text);
+      const result = await detectEmotion(text);
       return {
         emotion: result.emotion,
         confidence: result.confidence,
@@ -161,7 +161,7 @@ class JournalService {
     }
   }
 
-  private async createEntryOnline(entry: JournalEntry): Promise<JournalEntry> {
+  private async createEntryOnline(entry: Partial<JournalEntry>): Promise<JournalEntry> {
     const { data, error } = await supabase
       .from('journal_entries')
       .insert([entry])

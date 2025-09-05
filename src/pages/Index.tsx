@@ -3,7 +3,6 @@ import Navbar from '@/components/Navbar';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { Brain } from 'lucide-react';
-import { SignedIn, SignedOut } from '@/contexts/MockAuthContext';
 
 const Index = () => {
   

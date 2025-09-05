@@ -15,7 +15,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useUser } from '@/contexts/MockAuthContext';
+import { useUser } from '@/contexts/SupabaseAuthContext';
 import { toast } from '@/hooks/use-toast';
 
 // Import our new components

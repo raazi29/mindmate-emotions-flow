@@ -1,9 +1,10 @@
 // OpenRouter API utilities for Qwen 3 integration
 // Direct implementation without backend dependency
 
-// OpenRouter API key - using environment variable with fallback
+// OpenRouter configuration via environment variables
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-const QWEN_MODEL = "qwen/qwen1.5-72b-chat";
+// Allow overriding model from env; ship a solid 2025 default
+const OPENROUTER_MODEL = import.meta.env.VITE_OPENROUTER_MODEL || "qwen/qwen2.5-72b-instruct";
 
 // Detect emotion using Qwen 3 model directly via OpenRouter
 export const detectEmotionOpenRouter = async (text: string): Promise<{ emotion: string; confidence: number; intensity?: number }> => {
@@ -20,7 +21,7 @@ export const detectEmotionOpenRouter = async (text: string): Promise<{ emotion: 
         "HTTP-Referer": "https://mindmate-app.com"
       },
       body: JSON.stringify({
-        model: QWEN_MODEL,
+        model: OPENROUTER_MODEL,
         messages: [
           {
             role: "system",
@@ -132,7 +133,7 @@ export const getEmotionalFeedback = async (
         "HTTP-Referer": "https://mindmate-app.com"
       },
       body: JSON.stringify({
-        model: QWEN_MODEL,
+        model: OPENROUTER_MODEL,
         messages: [
           {
             role: "system",

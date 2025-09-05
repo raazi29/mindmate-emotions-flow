@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { SignedIn, SignedOut, UserButton, useUser } from '@/contexts/MockAuthContext';
+import { useUser } from '@/contexts/SupabaseAuthContext';
 import {
   Sheet,
   SheetContent,
@@ -171,27 +171,36 @@ const Navbar = () => {
                 </SheetClose>
               </div>
               <div className="flex flex-col gap-2 p-4 mt-auto border-t">
-                <SignedIn>
+                {isLoaded && user && (
                   <div className="flex items-center gap-2 mb-2 px-1">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.imageUrl} />
+                      <AvatarImage src={user.imageUrl} />
                       <AvatarFallback>{getUserInitials()}</AvatarFallback>
                     </Avatar>
                     <div className="text-sm font-medium truncate">
-                      {user?.firstName} {user?.lastName}
+                      {user.firstName} {user.lastName}
                     </div>
                   </div>
-                  <UserButton />
-                </SignedIn>
+                )}
               </div>
             </SheetContent>
           </Sheet>
           
           {/* User menu - hidden on mobile */}
           <div className="hidden md:flex items-center gap-2">
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
+            {isLoaded && user ? (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user.imageUrl} />
+                  <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm">{user.firstName || 'User'}</span>
+              </div>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => navigate(`/auth?mode=signin&redirectTo=${encodeURIComponent(location.pathname)}`)}>
+                Sign In
+              </Button>
+            )}
           </div>
         </div>
       </div>

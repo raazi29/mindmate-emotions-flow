@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider, useTheme } from "@/components/ThemeProvider";
-import { MockAuthProvider } from '@/contexts/MockAuthContext';
+import { AuthProvider } from '@/contexts/SupabaseAuthContext';
 import { useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import Index from "./pages/Index";
@@ -17,6 +17,7 @@ import ChatroomSetup from "./pages/ChatroomSetup";
 import SupabaseTest from "./pages/SupabaseTest";
 import EmotionsFlow from "./pages/EmotionsFlow";
 import SafetyPrivacy from "./pages/SafetyPrivacy";
+import Auth from "./pages/Auth";
 
 
 const queryClient = new QueryClient();
@@ -52,7 +53,7 @@ const ThemeToggleHandler = () => {
 };
 
 const App = () => (
-  <MockAuthProvider>
+  <AuthProvider>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="system" storageKey="mindmate-theme">
         <TooltipProvider>
@@ -70,13 +71,14 @@ const App = () => (
               <Route path="/chat/test" element={<SupabaseTest />} />
               <Route path="/emotions-flow" element={<EmotionsFlow />} />
               <Route path="/safety-privacy" element={<SafetyPrivacy />} />
+              <Route path="/auth" element={<Auth />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
-  </MockAuthProvider>
+  </AuthProvider>
 );
 
 export default App;

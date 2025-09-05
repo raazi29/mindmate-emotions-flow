@@ -26,7 +26,8 @@ app.add_middleware(
 # API Keys and configuration
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-QWEN_3_MODEL = "openai/gpt-3.5-turbo"  # Changed from qwen/qwen1.5-72b-chat to a more common model
+# Allow overriding via env; default to a strong 2025 model
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "qwen/qwen2.5-72b-instruct")
 
 # Hugging Face API configuration
 HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
@@ -281,7 +282,7 @@ async def detect_emotion(request: EmotionDetectionRequest):
                     "HTTP-Referer": "https://mindmate-app.com"
                 },
                 json={
-                    "model": QWEN_3_MODEL,
+                    "model": OPENROUTER_MODEL,
                     "messages": messages,
                     "max_tokens": 100,
                     "temperature": 0.1,
@@ -413,7 +414,7 @@ async def get_recommendations(request: RecommendationRequest):
                     "HTTP-Referer": "https://mindmate-app.com"
                 },
                 json={
-                    "model": QWEN_3_MODEL,
+                    "model": OPENROUTER_MODEL,
                     "messages": messages,
                     "max_tokens": 300,
                     "temperature": 0.7,

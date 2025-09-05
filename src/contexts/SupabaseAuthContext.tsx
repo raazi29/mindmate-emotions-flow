@@ -12,6 +12,7 @@ interface AuthContextType {
   signOut: () => Promise<{ error: AuthError | null }>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
   updateProfile: (updates: any) => Promise<{ error: AuthError | null }>;
+  signInWithGoogle: () => Promise<{ error: AuthError | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -271,6 +272,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+
+      if (error) {
+        toast({
+          title: 'Google Sign-In Failed',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return { error };
+      }
+
+      return { error: null };
+    } catch (e) {
+      const authError = e as AuthError;
+      toast({
+        title: 'Google Sign-In Error',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+      return { error: authError };
+    }
+  };
+
   const value: AuthContextType = {
     user,
     session,
@@ -280,6 +311,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signOut,
     resetPassword,
     updateProfile,
+    signInWithGoogle,
   };
 
   return (

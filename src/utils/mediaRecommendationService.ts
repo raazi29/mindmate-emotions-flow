@@ -205,7 +205,7 @@ async function fetchAIMediaRecommendations(emotion: string, intensity?: number):
   try {
     // Try to get the API key
     const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-    const QWEN_3_MODEL = "qwen/qwen1.5-72b-chat";
+    const OPENROUTER_MODEL = import.meta.env.VITE_OPENROUTER_MODEL || "qwen/qwen2.5-72b-instruct";
     
     if (!OPENROUTER_API_KEY) {
       throw new Error("OpenRouter API key not available");
@@ -221,7 +221,7 @@ async function fetchAIMediaRecommendations(emotion: string, intensity?: number):
         "HTTP-Referer": "https://mindmate-app.com"
       },
       body: JSON.stringify({
-        model: QWEN_3_MODEL,
+        model: OPENROUTER_MODEL,
         messages: [
           {
             role: "system",
