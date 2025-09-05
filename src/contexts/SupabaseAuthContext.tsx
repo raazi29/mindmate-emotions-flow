@@ -119,6 +119,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         password,
         options: {
           data: metadata,
+          emailRedirectTo: `${window.location.origin}/auth?mode=signin`,
         },
       });
 
@@ -277,7 +278,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          // After Google login, return to the app, then our Auth page will redirect to the requested page
+          redirectTo: `${window.location.origin}/auth?mode=signin&redirectTo=%2Fdashboard`,
         },
       });
 

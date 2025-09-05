@@ -1,4 +1,5 @@
 // Emotion processing service that connects to the FastAPI backend
+import { detectEmotionOpenRouter as detectEmotionViaOR } from '@/utils/openRouterAPI';
 
 // Use Vite's import.meta.env instead of process.env for environment detection
 const API_BASE_URL = import.meta.env.PROD
@@ -171,7 +172,13 @@ export const detectEmotion = async (text: string): Promise<EmotionResult> => {
     }
     
     if (!isBackendHealthy) {
-      // If backend is unhealthy, use fallback immediately
+      // If backend is unhealthy, try OpenRouter (client-side) if key is present, else fallback
+      if (import.meta.env.VITE_OPENROUTER_API_KEY) {
+        const or = await detectEmotionViaOR(text);
+        const result = { emotion: or.emotion as Emotion, confidence: or.confidence, intensity: or.intensity || Math.round(or.confidence * 10) };
+        notifyEmotionListeners(result);
+        return result;
+      }
       const fallbackResult = fallbackEmotionDetection(text);
       notifyEmotionListeners(fallbackResult);
       return fallbackResult;
@@ -213,7 +220,17 @@ export const detectEmotion = async (text: string): Promise<EmotionResult> => {
     // Mark backend as unhealthy
     isBackendHealthy = false;
     
-    // Fallback to local detection in case of API failure
+    // Try OpenRouter as a higher-quality fallback if available
+    if (import.meta.env.VITE_OPENROUTER_API_KEY) {
+      try {
+        const or = await detectEmotionViaOR(text);
+        const result = { emotion: or.emotion as Emotion, confidence: or.confidence, intensity: or.intensity || Math.round(or.confidence * 10) };
+        notifyEmotionListeners(result);
+        return result;
+      } catch (e) {
+        // fall through to rule-based
+      }
+    }
     const fallbackResult = fallbackEmotionDetection(text);
     notifyEmotionListeners(fallbackResult);
     return fallbackResult;

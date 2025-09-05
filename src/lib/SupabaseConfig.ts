@@ -14,13 +14,11 @@ export const SupabaseConfig = {
   anonKey: supabaseAnonKey
 };
 
-// Create and export the supabase client
-// Note: This is used for data storage only, authentication is handled by Clerk
+// Create and export the supabase client with auth enabled
 export const supabase = createClient(SupabaseConfig.url, SupabaseConfig.anonKey, {
   auth: {
-    // Disable Supabase auth since we're using Clerk
-    autoRefreshToken: false,
-    persistSession: false,
-    detectSessionInUrl: false
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
   }
-}); 
+});

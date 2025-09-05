@@ -18,6 +18,7 @@ import SupabaseTest from "./pages/SupabaseTest";
 import EmotionsFlow from "./pages/EmotionsFlow";
 import SafetyPrivacy from "./pages/SafetyPrivacy";
 import Auth from "./pages/Auth";
+import ProtectedRoute from "./routes/ProtectedRoute";
 
 
 const queryClient = new QueryClient();
@@ -63,14 +64,14 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/journal" element={<Journal />} />
-              <Route path="/resources" element={<Resources />} />
-              <Route path="/chat" element={<AnonymousChatrooms />} />
-              <Route path="/chat/setup" element={<ChatroomSetup />} />
-              <Route path="/chat/test" element={<SupabaseTest />} />
-              <Route path="/emotions-flow" element={<EmotionsFlow />} />
-              <Route path="/safety-privacy" element={<SafetyPrivacy />} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/journal" element={<ProtectedRoute><Journal /></ProtectedRoute>} />
+              <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
+              <Route path="/chat" element={<ProtectedRoute><AnonymousChatrooms /></ProtectedRoute>} />
+              <Route path="/chat/setup" element={<ProtectedRoute><ChatroomSetup /></ProtectedRoute>} />
+              <Route path="/chat/test" element={<ProtectedRoute><SupabaseTest /></ProtectedRoute>} />
+              <Route path="/emotions-flow" element={<ProtectedRoute><EmotionsFlow /></ProtectedRoute>} />
+              <Route path="/safety-privacy" element={<ProtectedRoute><SafetyPrivacy /></ProtectedRoute>} />
               <Route path="/auth" element={<Auth />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

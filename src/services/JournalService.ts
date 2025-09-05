@@ -162,9 +162,28 @@ class JournalService {
   }
 
   private async createEntryOnline(entry: Partial<JournalEntry>): Promise<JournalEntry> {
+    // Build a safe payload that only includes known columns and omits media fields
+    const payload: any = {
+      user_id: entry.user_id,
+      title: entry.title,
+      content: entry.content,
+      emotion: entry.emotion,
+      emotion_intensity: entry.emotion_intensity,
+      confidence: entry.confidence,
+      tags: entry.tags,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at,
+      synced: true,
+      is_favorite: entry.is_favorite ?? false,
+      category: entry.category,
+      location: entry.location,
+      weather: entry.weather,
+      mood_score: entry.mood_score,
+    };
+
     const { data, error } = await supabase
       .from('journal_entries')
-      .insert([entry])
+      .insert([payload])
       .select()
       .single();
 
@@ -238,9 +257,26 @@ class JournalService {
   }
 
   private async updateEntryOnline(id: string, updates: Partial<JournalEntry>): Promise<JournalEntry> {
+    // Whitelist update fields to avoid unknown column errors
+    const safeUpdates: any = {
+      title: updates.title,
+      content: updates.content,
+      emotion: updates.emotion,
+      emotion_intensity: updates.emotion_intensity,
+      confidence: updates.confidence,
+      tags: updates.tags,
+      updated_at: updates.updated_at,
+      synced: updates.synced,
+      is_favorite: updates.is_favorite,
+      category: updates.category,
+      location: updates.location,
+      weather: updates.weather,
+      mood_score: updates.mood_score,
+    };
+
     const { data, error } = await supabase
       .from('journal_entries')
-      .update(updates)
+      .update(safeUpdates)
       .eq('id', id)
       .select()
       .single();

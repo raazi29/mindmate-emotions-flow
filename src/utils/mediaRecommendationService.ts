@@ -218,7 +218,7 @@ async function fetchAIMediaRecommendations(emotion: string, intensity?: number):
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://mindmate-app.com"
+        "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
       },
       body: JSON.stringify({
         model: OPENROUTER_MODEL,

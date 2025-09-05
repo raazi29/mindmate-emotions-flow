@@ -3,8 +3,8 @@
 
 // OpenRouter configuration via environment variables
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-// Allow overriding model from env; ship a solid 2025 default
-const OPENROUTER_MODEL = import.meta.env.VITE_OPENROUTER_MODEL || "qwen/qwen2.5-72b-instruct";
+// Allow overriding model from env; ship a widely-available 2025 default
+const OPENROUTER_MODEL = import.meta.env.VITE_OPENROUTER_MODEL || "qwen/qwen2.5-7b-instruct";
 
 // Detect emotion using Qwen 3 model directly via OpenRouter
 export const detectEmotionOpenRouter = async (text: string): Promise<{ emotion: string; confidence: number; intensity?: number }> => {
@@ -18,7 +18,7 @@ export const detectEmotionOpenRouter = async (text: string): Promise<{ emotion: 
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://mindmate-app.com"
+        "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
       },
       body: JSON.stringify({
         model: OPENROUTER_MODEL,
@@ -130,7 +130,7 @@ export const getEmotionalFeedback = async (
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://mindmate-app.com"
+        "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
       },
       body: JSON.stringify({
         model: OPENROUTER_MODEL,
@@ -183,7 +183,7 @@ export const checkOpenRouterAvailability = async (forceCheck = false): Promise<b
       method: "GET",
       headers: {
         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://mindmate-app.com"
+        "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : 'http://localhost'
       },
       // Add timeout to avoid long hanging requests
       signal: AbortSignal.timeout(3000)
