@@ -68,7 +68,7 @@ const EmotionalInsightsDashboard = React.memo(({
       // Clean up listener when component unmounts
       emotionService.offEmotionDetected(handleNewEmotion);
     };
-  }, [currentEmotion]);
+  }, [currentEmotion, emotionHistory]);
   
   // Also update when emotionHistory changes
   useEffect(() => {

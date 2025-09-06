@@ -28,11 +28,23 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 # Allow overriding via env; default to a strong 2025 model
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "qwen/qwen2.5-72b-instruct")
+# Qwen 3 model for advanced AI features
+QWEN_3_MODEL = os.getenv("QWEN_3_MODEL", "qwen/qwen-3-235b-a22b")
 
 # Hugging Face API configuration
 HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY", "")
 HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/"
+# Best emotion detection models from Hugging Face
+# Primary: Go Emotions (most comprehensive and accurate)
 EMOTION_MODEL = "SamLowe/roberta-base-go_emotions"
+# High-performance alternatives ranked by accuracy:
+ALTERNATIVE_MODELS = [
+    "j-hartmann/emotion-english-distilroberta-base",  # Fast & accurate
+    "bhadresh-savani/bert-base-go-emotion",            # BERT-based, good balance
+    "cardiffnlp/twitter-roberta-base-emotion",        # Social media optimized
+    "nateraw/bert-base-uncased-emotion",              # General emotion detection
+    "daveni/twitter-emotion-base",                    # Twitter-specific emotions
+]
 SENTIMENT_MODEL = "cardiffnlp/twitter-roberta-base-sentiment-latest"
 
 # Development mode flag - set to True to use mock responses instead of real API calls
@@ -45,6 +57,17 @@ class Message(BaseModel):
 
 class EmotionDetectionRequest(BaseModel):
     text: str
+
+class OpenRouterEmotionRequest(BaseModel):
+    text: str
+    use_openrouter: bool = True
+
+class OpenRouterSummaryRequest(BaseModel):
+    text: str
+    max_length: Optional[int] = 200
+
+class OpenRouterAvailabilityRequest(BaseModel):
+    force_check: bool = False
 
 class RecommendationRequest(BaseModel):
     text: str
@@ -93,6 +116,77 @@ class WellnessAssistantRequest(BaseModel):
 class RefreshCacheRequest(BaseModel):
     force: bool = False
 
+from enum import Enum
+
+class EmotionLabel(str, Enum):
+    JOY = "joy"
+    SADNESS = "sadness"
+    ANGER = "anger"
+    FEAR = "fear"
+    SURPRISE = "surprise"
+    NEUTRAL = "neutral"
+    LOVE = "love"
+
+class EmotionMapping:
+    _mapping = {
+        "joy": EmotionLabel.JOY,
+        "happy": EmotionLabel.JOY,
+        "happiness": EmotionLabel.JOY,
+        "excitement": EmotionLabel.JOY,
+        "delight": EmotionLabel.JOY,
+        "pleasure": EmotionLabel.JOY,
+        "cheerful": EmotionLabel.JOY,
+        "elated": EmotionLabel.JOY,
+
+        "sadness": EmotionLabel.SADNESS,
+        "sad": EmotionLabel.SADNESS,
+        "unhappy": EmotionLabel.SADNESS,
+        "depressed": EmotionLabel.SADNESS,
+        "grief": EmotionLabel.SADNESS,
+        "sorrow": EmotionLabel.SADNESS,
+        "disappointment": EmotionLabel.SADNESS,
+        "remorse": EmotionLabel.SADNESS,
+
+        "anger": EmotionLabel.ANGER,
+        "angry": EmotionLabel.ANGER,
+        "furious": EmotionLabel.ANGER,
+        "mad": EmotionLabel.ANGER,
+        "annoyance": EmotionLabel.ANGER,
+        "irritated": EmotionLabel.ANGER,
+        "frustrated": EmotionLabel.ANGER,
+        "disgust": EmotionLabel.ANGER,
+
+        "fear": EmotionLabel.FEAR,
+        "afraid": EmotionLabel.FEAR,
+        "scared": EmotionLabel.FEAR,
+        "frightened": EmotionLabel.FEAR,
+        "anxious": EmotionLabel.FEAR,
+        "worried": EmotionLabel.FEAR,
+        "nervous": EmotionLabel.FEAR,
+        "terrified": EmotionLabel.FEAR,
+
+        "surprise": EmotionLabel.SURPRISE,
+        "surprised": EmotionLabel.SURPRISE,
+        "amazed": EmotionLabel.SURPRISE,
+        "astonished": EmotionLabel.SURPRISE,
+        "shocked": EmotionLabel.SURPRISE,
+
+        "love": EmotionLabel.LOVE,
+        "affection": EmotionLabel.LOVE,
+        "caring": EmotionLabel.LOVE,
+        "admiration": EmotionLabel.LOVE,
+        "gratitude": EmotionLabel.LOVE,
+
+        "neutral": EmotionLabel.NEUTRAL,
+        "calm": EmotionLabel.NEUTRAL,
+        "peaceful": EmotionLabel.NEUTRAL,
+    }
+
+    @staticmethod
+    def map_emotion(label: str) -> EmotionLabel:
+        label_lower = label.lower()
+        return EmotionMapping._mapping.get(label_lower, EmotionLabel.NEUTRAL)
+
 @app.get("/status")
 async def status():
     """Check API status"""
@@ -107,6 +201,178 @@ async def status():
             "openrouter": "available" if openrouter_api_available else "not configured"
         }
     }
+
+@app.post("/openrouter/check-availability")
+async def check_openrouter_availability(request: OpenRouterAvailabilityRequest = Body(...)):
+    """Check if OpenRouter API is available"""
+    if not OPENROUTER_API_KEY:
+        return {"available": False, "reason": "API key not configured"}
+    
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://openrouter.ai/api/v1/auth/key",
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}"
+                }
+            )
+            
+            return {"available": response.status_code == 200}
+            
+    except Exception as e:
+        print(f"Error checking OpenRouter availability: {e}")
+        return {"available": False, "reason": str(e)}
+
+@app.post("/openrouter/detect-emotion")
+async def openrouter_detect_emotion(request: OpenRouterEmotionRequest):
+    """Detect emotion using OpenRouter API (backend-only)"""
+    if not OPENROUTER_API_KEY:
+        raise HTTPException(status_code=500, detail="OpenRouter API key not configured")
+    
+    if not request.text or len(request.text.strip()) < 3:
+        return {"emotion": "neutral", "confidence": 0.5}
+    
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": "You are an emotion detection AI. Analyze the text and identify the primary emotion expressed. Output a JSON object with two fields: emotion (string: joy, sadness, anger, fear, surprise, love, neutral) and confidence (number between 0-1). Use only these emotion categories."
+            },
+            {
+                "role": "user",
+                "content": request.text
+            }
+        ]
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                OPENROUTER_API_URL,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "HTTP-Referer": "https://mindmate-app.com"
+                },
+                json={
+                    "model": OPENROUTER_MODEL,
+                    "messages": messages,
+                    "max_tokens": 100,
+                    "temperature": 0.1,
+                    "response_format": {"type": "json_object"}
+                }
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, 
+                                   detail=f"OpenRouter API error: {response.status_code}")
+                
+            result = response.json()
+            try:
+                content = result["choices"][0]["message"]["content"]
+                emotion_data = json.loads(content)
+                mapped_emotion = EmotionMapping.map_emotion(emotion_data.get("emotion", "neutral"))
+                emotion_data["emotion"] = mapped_emotion.value
+                return {
+                    "emotion": emotion_data.get("emotion", "neutral"),
+                    "confidence": emotion_data.get("confidence", 0.5),
+                    "model_used": "openrouter"
+                }
+            except (KeyError, json.JSONDecodeError) as e:
+                print(f"Error parsing OpenRouter response: {e}")
+                return {"emotion": "neutral", "confidence": 0.5, "model_used": "fallback-openrouter-parse-error"}
+                
+    except Exception as e:
+        print(f"Error in OpenRouter emotion detection: {e}")
+        return {"emotion": "neutral", "confidence": 0.5, "model_used": "fallback-general-error"}
+
+@app.post("/openrouter/generate-summary")
+async def openrouter_generate_summary(request: OpenRouterSummaryRequest):
+    """Generate summary using OpenRouter API (backend-only)"""
+    if not OPENROUTER_API_KEY:
+        raise HTTPException(status_code=500, detail="OpenRouter API key not configured")
+    
+    if not request.text or request.text.trim() == "":
+        return {"summary": "No content to summarize"}
+    
+    try:
+        messages = [
+            {
+                "role": "system",
+                "content": f"You are an AI assistant that creates concise summaries. Create a brief summary of the given text in {request.max_length} characters or less."
+            },
+            {
+                "role": "user",
+                "content": request.text
+            }
+        ]
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                OPENROUTER_API_URL,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "HTTP-Referer": "https://mindmate-app.com"
+                },
+                json={
+                    "model": OPENROUTER_MODEL,
+                    "messages": messages,
+                    "max_tokens": 150,
+                    "temperature": 0.3
+                }
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, 
+                                   detail=f"OpenRouter API error: {response.status_code}")
+                
+            result = response.json()
+            summary = result["choices"][0]["message"]["content"].strip()
+            return {"summary": summary, "model_used": "openrouter"}
+            
+    except Exception as e:
+        print(f"Error in OpenRouter summary generation: {e}")
+        return {"summary": request.text[0:request.max_length], "model_used": "fallback"}
+
+@app.post("/huggingface/detect-emotion")
+async def huggingface_detect_emotion(request: EmotionDetectionRequest):
+    """Detect emotion using Hugging Face API"""
+    if not HUGGINGFACE_API_KEY:
+        raise HTTPException(status_code=500, detail="Hugging Face API key not configured")
+
+    if not request.text or len(request.text.strip()) < 3:
+        return {"emotion": "neutral", "confidence": 0.5}
+
+    headers = {"Authorization": f"Bearer {HUGGINGFACE_API_KEY}"}
+    payload = {"inputs": request.text}
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                HUGGINGFACE_API_URL + EMOTION_MODEL,
+                headers=headers,
+                json=payload
+            )
+            response.raise_for_status()  # Raise an exception for HTTP errors
+            result = response.json()
+
+            if isinstance(result, list) and result and isinstance(result[0], list) and result[0]:
+                # Sort by score in descending order and get the top emotion
+                top_emotion = sorted(result[0], key=lambda x: x['score'], reverse=True)[0]
+                mapped_emotion = EmotionMapping.map_emotion(top_emotion['label'])
+                return {"emotion": mapped_emotion.value, "confidence": top_emotion['score']}
+            else:
+                logger.warning(f"Unexpected Hugging Face API response format: {result}")
+                return {"emotion": "neutral", "confidence": 0.5}
+
+    except httpx.RequestError as e:
+        logger.error(f"Hugging Face API connection error: {e}")
+        raise HTTPException(status_code=503, detail=f"Hugging Face API connection error: {e}")
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Hugging Face API returned an error: {e.response.status_code} - {e.response.text}")
+        raise HTTPException(status_code=e.response.status_code, detail=f"Hugging Face API returned an error: {e.response.text}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred during Hugging Face emotion detection: {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
 # Helper function for Hugging Face API calls
 async def query_huggingface_api(text: str, model: str):
@@ -143,241 +409,119 @@ async def query_huggingface_api(text: str, model: str):
         print(f"Error querying Hugging Face API: {e}")
         return None
 
-@app.get("/message/encouragement/{emotion}")
-async def get_encouragement_message(emotion: str):
-    """Get an encouraging message based on the user's emotional state"""
-    encouragement_messages = {
-        "joy": [
-            "Your joy is contagious! Keep embracing these positive moments.",
-            "That happiness you're feeling? It's a wonderful reminder of life's beauty.",
-            "Enjoying this positive energy is great - and sharing it multiplies it!"
-        ],
-        "sadness": [
-            "It's okay to feel sad. Be gentle with yourself during this time.",
-            "Even in sadness, you're showing strength by acknowledging your feelings.",
-            "This difficult feeling will pass. Remember to breathe and take one moment at a time."
-        ],
-        "anger": [
-            "Your anger is valid. Take a moment to breathe before deciding how to channel it.",
-            "It's okay to feel frustrated. Consider what this emotion is telling you about your needs.",
-            "When anger arises, it often signals a boundary that needs attention."
-        ],
-        "fear": [
-            "Even when facing fear, you have inner resources to help you through this.",
-            "Courage isn't the absence of fear, but moving forward despite it.",
-            "This uncertainty is challenging, but you've navigated difficult situations before."
-        ],
-        "neutral": [
-            "This neutral space is perfect for reflection and mindfulness.",
-            "A balanced emotional state provides clarity. What insights are available to you now?",
-            "Sometimes, emotional neutrality gives us the steady ground we need to move forward."
-        ]
-    }
-    
-    # Default to neutral if emotion not found
-    messages = encouragement_messages.get(emotion.lower(), encouragement_messages["neutral"])
-    
-    # Return a random message from the appropriate list
-    return {"message": random.choice(messages), "emotion": emotion}
-
-@app.get("/message/jokes/{emotion}")
-async def get_joke_message(emotion: str):
-    """Get a lighthearted joke based on the user's emotional state"""
-    jokes = {
-        "joy": [
-            "Why don't scientists trust atoms? Because they make up everything!",
-            "What's the best thing about Switzerland? I don't know, but the flag is a big plus!",
-            "How do you organize a space party? You planet!"
-        ],
-        "sadness": [
-            "Why did the photo go to jail? Because it was framed!",
-            "What's the best way to watch a fly fishing tournament? Live stream!",
-            "Why don't eggs tell jokes? They'd crack each other up!"
-        ],
-        "anger": [
-            "Why don't they play poker in the jungle? Too many cheetahs!",
-            "What's orange and sounds like a parrot? A carrot!",
-            "How do you keep a bagel from getting away? Put lox on it!"
-        ],
-        "fear": [
-            "What do you call a fake noodle? An impasta!",
-            "Why did the scarecrow win an award? Because he was outstanding in his field!",
-            "Why don't skeletons fight each other? They don't have the guts!"
-        ],
-        "neutral": [
-            "I told my wife she was drawing her eyebrows too high. She looked surprised!",
-            "What do you call a parade of rabbits hopping backwards? A receding hare-line!",
-            "Why did the bicycle fall over? Because it was two tired!"
-        ]
-    }
-    
-    # Default to neutral if emotion not found
-    emotion_jokes = jokes.get(emotion.lower(), jokes["neutral"])
-    
-    # Return a random joke from the appropriate list
-    return {"message": random.choice(emotion_jokes), "emotion": emotion}
-
-@app.post("/refresh-cache")
-async def refresh_cache(request: RefreshCacheRequest = Body(...)):
-    """Refresh any cached data in the API"""
-    try:
-        # This is a mock implementation - in a real system, you would
-        # clear any caches here
-        return {
-            "success": True, 
-            "message": "Cache refreshed successfully",
-            "forced": request.force,
-            "timestamp": str(random.random())  # Just to make the response unique
-        }
-    except Exception as e:
-        print(f"Error refreshing cache: {e}")
-        raise HTTPException(status_code=500, detail="Failed to refresh cache")
-
 @app.post("/detect-emotion")
 async def detect_emotion(request: EmotionDetectionRequest):
-    """Detect emotion from text using either Hugging Face API or OpenRouter API"""
+    """Detect emotion from text using Hugging Face API"""
     if not request.text or len(request.text.strip()) < 3:
         return {"emotion": "neutral", "confidence": 0.5}
         
     try:
-        # First try using Hugging Face API if available
-        if HUGGINGFACE_API_KEY:
-            start_time = time.time()
-            result = await query_huggingface_api(request.text, EMOTION_MODEL)
-            
-            if result:
-                # Process Hugging Face emotion results
-                emotions = result[0]
-                # Find the emotion with the highest score
-                top_emotion = max(emotions, key=lambda x: x['score'])
-                
-                # Map the emotion label to our standard set
-                emotion = map_emotion(top_emotion['label'])
-                
-                return {
-                    "emotion": emotion,
-                    "confidence": top_emotion['score'],
-                    "processed_time": time.time() - start_time,
-                    "model_used": "huggingface"
-                }
+        if not HUGGINGFACE_API_KEY:
+            raise HTTPException(status_code=500, detail="Hugging Face API key not configured")
+
+        # Try primary model first, then fallbacks
+        models_to_try = [EMOTION_MODEL] + ALTERNATIVE_MODELS
         
-        # Fallback to OpenRouter API
-        messages = [
-            {
-                "role": "system",
-                "content": "You are an emotion detection AI. Analyze the text and identify the primary emotion expressed. Output a JSON object with two fields: emotion (string: joy, sadness, anger, fear, surprise, love, neutral) and confidence (number between 0-1). Use only these emotion categories."
-            },
-            {
-                "role": "user",
-                "content": request.text
-            }
-        ]
-        
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                OPENROUTER_API_URL,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                    "HTTP-Referer": "https://mindmate-app.com"
-                },
-                json={
-                    "model": OPENROUTER_MODEL,
-                    "messages": messages,
-                    "max_tokens": 100,
-                    "temperature": 0.1,
-                    "response_format": {"type": "json_object"}
-                }
-            )
-            
-            if response.status_code != 200:
-                print(f"OpenRouter API error: {response.status_code}, {response.text}")
-                # Fallback to rule-based approach
-                return rule_based_emotion_detection(request.text)
-                
-            result = response.json()
+        for model in models_to_try:
             try:
-                content = result["choices"][0]["message"]["content"]
-                emotion_data = json.loads(content)
-                return {
-                    "emotion": emotion_data.get("emotion", "neutral"),
-                    "confidence": emotion_data.get("confidence", 0.5),
-                    "model_used": "openrouter"
-                }
-            except (KeyError, json.JSONDecodeError) as e:
-                print(f"Error parsing OpenRouter response: {e}")
-                # Fallback to rule-based approach
-                return rule_based_emotion_detection(request.text)
+                result = await query_huggingface_api(request.text, model)
                 
+                if result and isinstance(result, list) and len(result) > 0:
+                    # Process Hugging Face emotion results
+                    emotions = result[0]
+                    
+                    # Ensure we have valid emotion data
+                    if isinstance(emotions, list) and len(emotions) > 0:
+                        # Find the emotion with the highest score
+                        top_emotion = max(emotions, key=lambda x: x.get('score', 0))
+                        
+                        # Map the emotion label to our standard set
+                        emotion = EmotionMapping.map_emotion(top_emotion['label'])
+                        confidence = top_emotion.get('score', 0.5)
+                            
+                            # Only accept high-confidence results
+                        if confidence >= 0.3:
+                            return {
+                                "emotion": emotion,
+                                "confidence": confidence,
+                                "processed_time": time.time() - start_time,
+                                "raw_emotions": emotions  # Include raw results for debugging
+                            }
     except Exception as e:
-        print(f"Error in emotion detection: {e}")
-        # Fallback to rule-based approach
-        return rule_based_emotion_detection(request.text)
+            logger.warning(f"Model {model} failed: {e}")
+            continue
+        
+        # If all Hugging Face models fail, default to neutral
+                return {"emotion": EmotionLabel.NEUTRAL, "source": "Fallback"}
 
-# Helper function to map emotion labels
-def map_emotion(label: str) -> str:
-    """Map Hugging Face emotion labels to our standard set"""
-    # Map from the 28 GoEmotions categories to our simplified set
-    positive_emotions = ["admiration", "amusement", "approval", "caring", "desire", 
-                         "excitement", "gratitude", "joy", "love", "optimism", "pride", 
-                         "relief"]
-    negative_emotions = ["anger", "annoyance", "disappointment", "disapproval", 
-                         "disgust", "embarrassment", "fear", "grief", "nervousness", 
-                         "remorse", "sadness"]
-    surprise_emotions = ["confusion", "curiosity", "realization", "surprise"]
-    
-    label = label.lower()
-    
-    if label in positive_emotions or label == "joy":
-        return "joy"
-    elif label in negative_emotions:
-        if label in ["anger", "annoyance", "disapproval", "disgust"]:
-            return "anger"
-        elif label in ["fear", "nervousness"]:
-            return "fear"
-        else:
-            return "sadness"
-    elif label in surprise_emotions:
-        return "surprise"
-    else:
-        return "neutral"
+    except Exception as e:
+        print(f"Emotion detection failed: {e}")
+        raise HTTPException(status_code=500, detail="Emotion detection failed due to an internal error.")
 
-# Rule-based emotion detection as fallback
-def rule_based_emotion_detection(text: str) -> dict:
-    """Simple rule-based emotion detection as fallback"""
-    text = text.lower()
+
+
+
+                        if diminisher + " " + word in text or word + " " + diminisher in text:
+                            score *= 0.6
+                    
+                    # Handle negation (reduce but don't completely negate)
+                    if has_negation:
+                        score *= 0.3  # Strong reduction for negated emotions
+                    
+                    emotion_scores[emotion] += score
     
-    # Simple keyword matching
-    joy_words = ["happy", "joy", "delighted", "glad", "pleased", "excited", "wonderful"]
-    sad_words = ["sad", "unhappy", "depressed", "miserable", "down", "blue", "upset", "disappointed"]
-    anger_words = ["angry", "mad", "furious", "annoyed", "irritated", "frustrated"]
-    fear_words = ["afraid", "scared", "frightened", "terrified", "anxious", "worried", "nervous"]
-    
-    # Count occurrences
-    joy_count = sum(1 for word in joy_words if word in text)
-    sad_count = sum(1 for word in sad_words if word in text)
-    anger_count = sum(1 for word in anger_words if word in text)
-    fear_count = sum(1 for word in fear_words if word in text)
-    
-    # Find the dominant emotion
-    counts = {
-        "joy": joy_count,
-        "sadness": sad_count,
-        "anger": anger_count,
-        "fear": fear_count
+    # Handle compound emotions and context
+    compound_patterns = {
+        "joy": ["happy and excited", "love and joy", "happy and grateful", "excited and happy"],
+        "sadness": ["sad and lonely", "disappointed and hurt", "sad and angry", "upset and sad"],
+        "anger": ["angry and frustrated", "mad and disappointed", "angry and upset", "furious and mad"],
+        "fear": ["scared and worried", "afraid and anxious", "nervous and scared", "terrified and afraid"],
+        "surprise": ["surprised and amazed", "shocked and surprised", "amazed and shocked"]
     }
     
-    if all(count == 0 for count in counts.values()):
-        return {"emotion": "neutral", "confidence": 0.5, "model_used": "rule-based"}
+    for emotion, patterns in compound_patterns.items():
+        for pattern in patterns:
+            if pattern in text:
+                emotion_scores[emotion] += 2  # Bonus for compound emotions
     
-    dominant_emotion = max(counts, key=counts.get)
-    total = sum(counts.values())
-    confidence = counts[dominant_emotion] / total if total > 0 else 0.5
+    # Handle basic sentiment indicators if no specific emotions found
+    if max(emotion_scores.values()) < 1:
+        positive_indicators = ["good", "great", "awesome", "wonderful", "fantastic", "amazing", "excellent", "positive"]
+        negative_indicators = ["bad", "terrible", "awful", "horrible", "worst", "negative", "awful"]
+        
+        positive_count = sum(1 for word in positive_indicators if word in text)
+        negative_count = sum(1 for word in negative_indicators if word in text)
+        
+        if positive_count > negative_count:
+            emotion_scores["joy"] += 1
+        elif negative_count > positive_count:
+            emotion_scores["sadness"] += 1
+    
+    # Handle exclamation and question marks as emotion indicators
+    if text.endswith("!"):
+        max_emotion = max(emotion_scores, key=emotion_scores.get)
+        if emotion_scores[max_emotion] > 0:
+            emotion_scores[max_emotion] *= 1.2  # Amplify existing emotion
+    
+    # Determine dominant emotion
+    max_score = max(emotion_scores.values())
+    
+    if max_score < 0.5:  # Very low confidence
+        return {"emotion": "neutral", "confidence": 0.4, "model_used": "rule-based"}
+    
+    # Find all emotions with max score (handle ties)
+    dominant_emotions = [emotion for emotion, score in emotion_scores.items() if score == max_score]
+    dominant_emotion = dominant_emotions[0]  # Take first in case of tie
+    
+    # Calculate confidence based on score distribution
+    total_score = sum(emotion_scores.values())
+    confidence = min(max_score / total_score if total_score > 0 else 0.5, 0.95)
     
     return {
         "emotion": dominant_emotion,
-        "confidence": confidence,
-        "model_used": "rule-based"
+        "confidence": round(confidence, 2),
+        "model_used": "rule-based",
+        "scores": emotion_scores  # Include raw scores for debugging
     }
 
 @app.post("/personalized-recommendations")
@@ -454,7 +598,7 @@ async def get_recommendations(request: RecommendationRequest):
                     
                 return {"resources": recommended_resources}
                 
-            except Exception as e:
+        except Exception as e:
                 print(f"Error parsing JSON: {e}")
                 print(f"Original content: {content}")
                 return {"resources": request.resources}
@@ -603,6 +747,96 @@ async def summarize_text(request: SummaryRequest):
         print(f"Error processing summary request: {e}")
         # For summary, we'll just return a truncated version of the original
         return {"summary": request.text[:request.max_length - 3] + "..."}
+
+@app.post("/openrouter/personalized-recommendations")
+async def get_personalized_recommendations(request: dict):
+    """Get personalized recommendations based on emotion and context"""
+    try:
+        emotion = request.get("emotion", "neutral").lower()
+        context = request.get("context", "")
+        
+        # Create personalized recommendation prompt
+        messages = [
+            {
+                "role": "system",
+                "content": "You are an AI wellness coach. Provide 3-5 personalized, actionable recommendations based on the user's current emotion and context. Format your response as a JSON array of objects with 'title', 'type' (exercise/meditation/article/video/social), and 'duration' fields."
+            },
+            {
+                "role": "user",
+                "content": f"I'm feeling {emotion}. {context if context else ''} What specific activities or resources would help me right now?"
+            }
+        ]
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                OPENROUTER_API_URL,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "HTTP-Referer": "https://mindmate-app.com"
+                },
+                json={
+                    "model": QWEN_3_MODEL,
+                    "messages": messages,
+                    "max_tokens": 500,
+                    "temperature": 0.7,
+                    "response_format": {"type": "json_object"}
+                }
+            )
+            
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, 
+                                   detail=f"OpenRouter API error: {response.status_code}")
+            
+            result = response.json()
+            content = result["choices"][0]["message"][content]
+            
+            try:
+                # Parse JSON response
+                recommendations = json.loads(content)
+                return {"recommendations": recommendations}
+            except json.JSONDecodeError:
+                # Fallback to structured response
+                fallback_recommendations = get_fallback_recommendations(emotion)
+                return {"recommendations": fallback_recommendations}
+                
+    except Exception as e:
+        print(f"Error getting personalized recommendations: {e}")
+        # Return fallback recommendations
+        fallback_recommendations = get_fallback_recommendations(emotion)
+        return {"recommendations": fallback_recommendations}
+
+def get_fallback_recommendations(emotion: str) -> list:
+    """Provide fallback recommendations when API fails"""
+    fallback_data = {
+        "happy": [
+            {"title": "Practice gratitude journaling", "type": "exercise", "duration": "10 min"},
+            {"title": "Share your joy with others", "type": "social", "duration": "15 min"},
+            {"title": "Engage in creative activities", "type": "activity", "duration": "20 min"}
+        ],
+        "sad": [
+            {"title": "Practice self-compassion meditation", "type": "meditation", "duration": "10 min"},
+            {"title": "Connect with a supportive friend", "type": "social", "duration": "15 min"},
+            {"title": "Gentle physical exercise", "type": "exercise", "duration": "15 min"}
+        ],
+        "angry": [
+            {"title": "Deep breathing exercises", "type": "exercise", "duration": "5 min"},
+            {"title": "Progressive muscle relaxation", "type": "exercise", "duration": "10 min"},
+            {"title": "Take a mindful walk", "type": "activity", "duration": "20 min"}
+        ],
+        "anxious": [
+            {"title": "Grounding techniques", "type": "exercise", "duration": "5 min"},
+            {"title": "Mindfulness meditation", "type": "meditation", "duration": "10 min"},
+            {"title": "Write down your worries", "type": "activity", "duration": "15 min"}
+        ],
+        "neutral": [
+            {"title": "Explore new interests", "type": "activity", "duration": "15 min"},
+            {"title": "Practice mindfulness", "type": "meditation", "duration": "10 min"},
+            {"title": "Set small goals", "type": "activity", "duration": "10 min"}
+        ]
+    }
+    
+    return fallback_data.get(emotion.lower(), fallback_data["neutral"])
 
 @app.post("/generate-journal-prompt")
 async def generate_journal_prompt(request: JournalPromptRequest):
@@ -1356,15 +1590,15 @@ async def wellness_assistant(request: WellnessAssistantRequest):
             if "hello" in user_input.lower() or "hi" in user_input.lower():
                 return {"message": "Hello! I'm your wellness assistant. How can I support your emotional wellbeing today?", "model_used": request.ai_model}
             elif "resources" in user_input.lower():
-                return {"message": "I can suggest several types of resources: guided meditations, journaling exercises, physical activities, or support groups. Which would be most helpful for you?", "model_used": request.ai_model}
+                return {"message": "I can suggest several types of resources: guided meditations, journaling exercises, physical activities, or support groups. Which would be most helpful for you?"}
             elif "stress" in user_input.lower() or "anxiety" in user_input.lower():
-                return {"message": "For stress and anxiety, I recommend deep breathing exercises, progressive muscle relaxation, or mindful walking. Would you like me to explain any of these in more detail?", "model_used": request.ai_model}
+                return {"message": "For stress and anxiety, I recommend deep breathing exercises, progressive muscle relaxation, or mindful walking. Would you like me to explain any of these in more detail?"}
             elif "sad" in user_input.lower() or "depression" in user_input.lower():
-                return {"message": "I'm sorry you're feeling this way. Regular physical activity, maintaining connections, and self-compassion practices can help. Would you like specific resources for managing sadness?", "model_used": request.ai_model}
+                return {"message": "I'm sorry you're feeling this way. Regular physical activity, maintaining connections, and self-compassion practices can help. Would you like specific resources for managing sadness?"}
             elif "sleep" in user_input.lower():
-                return {"message": "Sleep is crucial for emotional wellbeing. I suggest establishing a calming bedtime routine, limiting screen time before bed, and creating a comfortable sleep environment. Need more specific advice?", "model_used": request.ai_model}
+                return {"message": "Sleep is crucial for emotional wellbeing. I suggest establishing a calming bedtime routine, limiting screen time before bed, and creating a comfortable sleep environment. Need more specific advice?"}
             else:
-                return {"message": "I'm here to support your emotional wellbeing. Would you like resources for stress management, mood improvement, better sleep, or healthy relationships?", "model_used": request.ai_model}
+                return {"message": "I'm here to support your emotional wellbeing. Would you like resources for stress management, mood improvement, better sleep, or healthy relationships?"}
             
         # In production mode, use OpenRouter API
         # Choose the appropriate AI model based on request
@@ -1423,14 +1657,12 @@ async def wellness_assistant(request: WellnessAssistantRequest):
                 if response.status_code == 401:
                     print("Authentication error - check your OpenRouter API key")
                     return {
-                        "message": "I'm having trouble connecting to my knowledge base due to an authentication issue. Please try again later.",
-                        "model_used": "fallback"
+                        "message": "I'm having trouble connecting to my knowledge base due to an authentication issue. Please try again later."
                     }
                 elif response.status_code == 429:
                     print("Rate limit exceeded - OpenRouter API rate limit reached")
                     return {
-                        "message": "I've been thinking too much lately! Please give me a moment to rest before asking another question.",
-                        "model_used": "fallback"
+                        "message": "I've been thinking too much lately! Please give me a moment to rest before asking another question."
                     }
                 
                 # Return a graceful error message instead of raising an exception
@@ -1457,4 +1689,4 @@ async def wellness_assistant(request: WellnessAssistantRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host="0.0.0.0", port=8000)

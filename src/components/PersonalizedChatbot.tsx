@@ -23,7 +23,7 @@ interface Message {
   content: string;
   sender: 'user' | 'bot';
   timestamp: Date;
-  model?: string;
+
 }
 
 interface PersonalizedChatbotProps {
@@ -347,9 +347,7 @@ const PersonalizedChatbot: React.FC<PersonalizedChatbotProps> = ({
       const result = await response.json();
       
       // Log which model was actually used (could be different from what was requested)
-      if (result.model_used) {
-        console.log(`Response received from model: ${result.model_used}`);
-      }
+
       
       // Check if we received a proper message
       if (!result.message) {
@@ -615,4 +613,4 @@ const PersonalizedChatbot: React.FC<PersonalizedChatbotProps> = ({
   );
 };
 
-export default PersonalizedChatbot; 
+export default PersonalizedChatbot;

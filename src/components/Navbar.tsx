@@ -212,6 +212,11 @@ const Navbar = () => {
                     <span>Journal</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate('/account')}>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Account Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={async () => { await signOut(); navigate('/'); }}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign out</span>

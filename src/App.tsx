@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Journal from "./pages/Journal";
 import Resources from "./pages/Resources";
+import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 import AnonymousChatrooms from "./pages/AnonymousChatrooms";
 import ChatroomSetup from "./pages/ChatroomSetup";
@@ -67,6 +68,7 @@ const App = () => (
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/journal" element={<ProtectedRoute><Journal /></ProtectedRoute>} />
               <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
+              <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
               <Route path="/chat" element={<ProtectedRoute><AnonymousChatrooms /></ProtectedRoute>} />
               <Route path="/chat/setup" element={<ProtectedRoute><ChatroomSetup /></ProtectedRoute>} />
               <Route path="/chat/test" element={<ProtectedRoute><SupabaseTest /></ProtectedRoute>} />

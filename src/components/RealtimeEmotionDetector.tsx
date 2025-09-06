@@ -15,7 +15,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import emotionService from '@/utils/emotionService';
-import { detectEmotionOpenRouter } from '@/utils/openRouterAPI';
+import { openRouterService } from '@/services/OpenRouterService';
 
 interface RealtimeEmotionDetectorProps {
   onEmotionDetected?: (emotion: string, intensity: number) => void;
@@ -118,13 +118,23 @@ const RealtimeEmotionDetector: React.FC<RealtimeEmotionDetectorProps> = ({
     try {
       let emotionResult;
       
-      // Use OpenRouter as the primary detector if enabled
+      // Use OpenRouter via backend service if enabled
       if (useOpenRouter) {
-        console.log("Using OpenRouter for emotion detection");
-        emotionResult = await detectEmotionOpenRouter(inputText);
-        console.log("OpenRouter emotion detection result:", emotionResult);
+        console.log("Using OpenRouter via backend service for emotion detection");
+        try {
+          const result = await openRouterService.detectEmotion(inputText);
+          emotionResult = {
+            emotion: result.emotion,
+            confidence: result.confidence,
+            intensity: Math.round(result.confidence * 10)
+          };
+          console.log("OpenRouter backend service result:", emotionResult);
+        } catch (error) {
+          console.error("OpenRouter service error, falling back to HuggingFace:", error);
+          emotionResult = await emotionService.detectEmotion(inputText);
+        }
       } 
-      // Fall back to HuggingFace if that's enabled
+      // Use HuggingFace if enabled
       else if (useHuggingFace) {
         console.log("Using HuggingFace for emotion detection");
         emotionResult = await emotionService.detectEmotion(inputText);
@@ -134,7 +144,6 @@ const RealtimeEmotionDetector: React.FC<RealtimeEmotionDetectorProps> = ({
       else {
         console.log("Using backend API for emotion detection");
         try {
-          // Try to use the backend API first
           const response = await fetch('http://localhost:8000/detect-emotion', {
             method: 'POST',
             headers: {
