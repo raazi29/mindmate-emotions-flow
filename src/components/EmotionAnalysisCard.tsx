@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,7 +38,7 @@ interface EmotionAnalysisCardProps {
   initialText?: string;
 }
 
-const EmotionAnalysisCard: React.FC<EmotionAnalysisCardProps> = ({
+const EmotionAnalysisCard = ({
   onComplete,
   userHistory = [],
   initialText = ''

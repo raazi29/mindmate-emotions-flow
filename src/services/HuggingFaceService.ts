@@ -6,7 +6,7 @@ interface EmotionResult {
 }
 
 class HuggingFaceService {
-  private baseURL = 'http://localhost:8000';
+  private baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
   private cache = new Map<string, {emotion: string; confidence: number; timestamp: number}>();
   private CACHE_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
   private MAX_CACHE_SIZE = 50;
@@ -27,9 +27,8 @@ class HuggingFaceService {
     }
 
     try {
-      const response = await axios.post(`${this.baseURL}/detect-emotion`, {
-        text: text,
-        use_huggingface: true
+      const response = await axios.post(`${this.baseURL}/api/detect-emotion`, {
+        text: text
       }, {
         timeout: 15000, // 15 second timeout
         headers: {

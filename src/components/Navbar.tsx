@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Brain, 
@@ -99,9 +99,12 @@ const Navbar = () => {
             </span>
           </Link>
           <Link to="/resources" className={navLinkStyle('/resources')}>
-            Coping & Resources
-          </Link>
-        </nav>
+                      Coping & Resources
+                    </Link>
+                    <Link to="/ai-companion" className={navLinkStyle('/ai-companion')}>
+                      AI Companion
+                    </Link>
+                  </nav>
         
         {/* Theme Toggle, User Menu and Mobile Menu */}
         <div className="flex items-center gap-2">
@@ -169,8 +172,13 @@ const Navbar = () => {
                       Coping & Resources
                     </span>
                   </Link>
-                </SheetClose>
-              </div>
+                                  </SheetClose>
+                                  <SheetClose asChild>
+                                    <Link to="/ai-companion" className={mobileNavLinkStyle('/ai-companion')}>
+                                      AI Companion
+                                    </Link>
+                                  </SheetClose>
+                                </div>
               <div className="flex flex-col gap-2 p-4 mt-auto border-t">
                 {isLoaded && user && (
                   <div className="flex items-center gap-2 mb-2 px-1">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -186,7 +186,7 @@ const emotionSuggestions = {
   }
 };
 
-const EmotionSuggestionsDialog: React.FC<EmotionSuggestionsDialogProps> = ({ 
+const EmotionSuggestionsDialog = ({ 
   emotion, 
   intensity = 5,
   trigger 

@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { getHuggingFace, isHuggingFaceAvailable } from '@/utils/huggingfaceUtils';
 import { useToast } from '@/hooks/use-toast';
 import { Brain, LineChart, BookOpen, ArrowRight, RefreshCw } from 'lucide-react';
+import { emotionAnalysisService } from '@/services/EmotionAnalysisService';
 
 type EmotionTrend = {
   emotion: string;
   frequency: number;
   change: number;
+  intensity: number;
 };
 
 interface EmotionalInsightMLProps {
@@ -18,10 +19,10 @@ interface EmotionalInsightMLProps {
   journalEntries?: string[];
 }
 
-const EmotionalInsightML: React.FC<EmotionalInsightMLProps> = ({
+const EmotionalInsightML = ({
   currentEmotion = 'neutral',
   journalEntries = []
-}) => {
+}: EmotionalInsightMLProps) => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [emotionTrends, setEmotionTrends] = useState<EmotionTrend[]>([]);
@@ -163,251 +164,58 @@ const EmotionalInsightML: React.FC<EmotionalInsightMLProps> = ({
     return shuffled.slice(0, 3);
   };
   
-  // Function to analyze emotions using the Hugging Face model directly
-  const analyzeEmotionsWithModel = useCallback(async (text: string) => {
-    if (!text || text.trim().length < 10) {
-      return null;
+  // Optimize analyzeEmotionalData to be more efficient and prevent infinite loops
+  const analyzeEmotionalData = useCallback(async () => {
+    // Prevent multiple simultaneous analyses
+    if (loading) {
+      console.log('Analysis already in progress, skipping');
+      return;
     }
     
-    const hf = getHuggingFace();
-    if (!hf) {
-      throw new Error('Hugging Face client not initialized');
-    }
-    
-    // Create a timeout to abort if the request takes too long
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    setLoading(true);
+    setModelStatus('loading');
+    console.log('Starting emotional data analysis for emotion:', currentEmotion);
     
     try {
-      // Use a more reliable text classification model
-      const classifier = await hf.textClassification({
-        model: 'SamLowe/roberta-base-go_emotions',
-        inputs: text
-      });
-      
-      // Clear the timeout
-      clearTimeout(timeoutId);
-      
-      // Map emotion labels correctly
-      return classifier;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      console.error('Error in emotion classification:', error);
-      throw error;
-    }
-  }, []);
-  
-  // Process emotional data from journal entries
-  const processEmotionalData = useCallback(async () => {
-    const hf = getHuggingFace();
-    if (!hf) {
-      console.log('Hugging Face client not available, using demo trends');
-      return {
-        insight: getEmotionBasedInsight(currentEmotion),
-        strengths: ['Emotional Awareness', 'Empathy', 'Resilience'],
-        areas: ['Emotional Regulation', 'Stress Management'],
-        trends: getDemoTrends(),
-        actions: getEmotionActionSuggestions(currentEmotion)
-      };
-    }
-    
-    try {
+      // Check if emotion analysis service is available
+      const isAvailable = await emotionAnalysisService.checkAvailability();
+      if (!isAvailable) {
+        throw new Error('Emotion analysis service is not available');
+      }
+
       // Get all recent emotion entries
       const combinedText = journalEntries.slice(0, 5).join(' ');
       
-      if (combinedText.length < 10) {
-        console.log('Not enough text data for analysis, using default values');
-        // Generate more varied default insights based on current emotion
-        const emotionBasedInsights = getEmotionBasedInsight(currentEmotion);
-        const emotionActions = getEmotionActionSuggestions(currentEmotion);
-        
-        return {
-          insight: emotionBasedInsights,
-          strengths: [
-            'Emotional Awareness',
-            'Empathy',
-            'Resilience'
-          ],
-          areas: [
-            'Emotional Regulation',
-            'Stress Management'
-          ],
-          trends: getDemoTrends(),
-          actions: emotionActions
-        };
-      }
+      // Always use real ML analysis, even with limited text
+      const analysis = await emotionAnalysisService.analyzeEmotion(combinedText || `Current emotion: ${currentEmotion}`);
       
-      // Analyze the emotional data with ML models only
-      // Get top emotional strengths with zero-shot classification
-      const strengthsResult = await hf.zeroShotClassification({
-        model: 'facebook/bart-large-mnli',
-        inputs: combinedText,
-        parameters: {
-          candidate_labels: [
-            'emotional awareness', 
-            'empathy', 
-            'emotional regulation', 
-            'social skills', 
-            'self-motivation', 
-            'resilience', 
-            'optimism',
-            'adaptability',
-            'stress management'
-          ]
-        }
-      });
-      
-      // Properly type the result based on HF API structure
-      const labels = (strengthsResult as any).labels || [];
-      const topStrengths = labels.slice(0, 3)
-        .map((label: string) => label.charAt(0).toUpperCase() + label.slice(1));
-      
-      // Areas for development (lowest scores)
-      const areasForDevelopment = labels.slice(-2)
-        .map((label: string) => label.charAt(0).toUpperCase() + label.slice(1));
-      
-      // Generate personalized insight with text generation
-      const insightPrompt = `Based on emotional patterns showing strengths in ${topStrengths.join(', ')} and current emotion of ${currentEmotion}, provide a brief, helpful emotional insight in 2-3 sentences:`;
-      
-      const insightResult = await hf.textGeneration({
-        model: 'google/flan-t5-large',
-        inputs: insightPrompt,
-        parameters: {
-          max_new_tokens: 100,
-          temperature: 0.7,
-          top_p: 0.9
-        }
-      });
-      
-      // For variety, occasionally (30% of the time) mix in our own generated insights 
-      // instead of always using the model's response
-      let finalInsight = insightResult.generated_text;
-      if (Math.random() < 0.3) {
-        finalInsight = getEmotionBasedInsight(currentEmotion);
-      }
-      
-      // Always generate action suggestions based on emotion
+      // Generate action suggestions based on current emotion
       const actionSuggestions = getEmotionActionSuggestions(currentEmotion);
       
-      // Process emotion trends using the model
-      const emotionLabels = ['joy', 'sadness', 'anger', 'fear', 'love', 'surprise', 'neutral'];
-      
-      // Analyze emotional trends from journal entries
-      const trendPrompt = `Analyze the following journal entries for emotional trends. Output only the emotions detected in format 'emotion:frequency':
-      ${journalEntries.slice(0, 5).join(' ')}`;
-      
-      const trendResults = await hf.textGeneration({
-        model: 'google/flan-t5-large',
-        inputs: trendPrompt,
-        parameters: {
-          max_new_tokens: 50,
-          temperature: 0.3
-        }
-      });
-      
-      // Parse trend results or use classification as backup
-      let trends: EmotionTrend[] = [];
-      
-      // Fallback to direct classification of entries
-      let emotionCounts: Record<string, number> = {};
-      emotionLabels.forEach(emotion => { emotionCounts[emotion] = 0; });
-      
-      // Use text classification on each entry
-      const classificationResults = await Promise.all(
-        journalEntries.slice(0, 5).map(entry => 
-          hf.textClassification({
-            model: 'SamLowe/roberta-base-go_emotions',
-            inputs: entry
-          }).catch(() => null)
-        )
+      // Process emotion trends using the service
+      const trends = await emotionAnalysisService.getEmotionTrends(
+        journalEntries.slice(0, 10).map((text, index) => ({
+          id: index,
+          text,
+          emotion: currentEmotion,
+          emotion_intensity: 5, // Default intensity
+          created_at: new Date().toISOString()
+        }))
       );
       
-      // Process results
-      classificationResults.filter(Boolean).forEach(result => {
-        if (result && result[0] && result[0].label) {
-          const emotion = result[0].label.toLowerCase();
-          // Map to standard emotions
-          if (emotion.includes('joy') || emotion.includes('happ')) {
-            emotionCounts['joy']++;
-          } else if (emotion.includes('sad') || emotion.includes('disappoint')) {
-            emotionCounts['sadness']++;  
-          } else if (emotion.includes('ang') || emotion.includes('frus') || emotion.includes('annoy')) {
-            emotionCounts['anger']++;
-          } else if (emotion.includes('fear') || emotion.includes('anx') || emotion.includes('nerv')) {
-            emotionCounts['fear']++;
-          } else if (emotion.includes('love') || emotion.includes('affe')) {
-            emotionCounts['love']++;
-          } else if (emotion.includes('surp') || emotion.includes('amaz')) {
-            emotionCounts['surprise']++;
-          } else {
-            emotionCounts['neutral']++;
-          }
-        }
-      });
-      
-      // Create trend data 
-      trends = Object.entries(emotionCounts).map(([emotion, count]) => {
-        const totalEntries = Math.max(1, classificationResults.filter(Boolean).length);
-        const frequency = Math.round((count / totalEntries) * 100) || 5;
-        // Add some variation for visualization
-        const change = Math.floor(Math.random() * 21) - 10;
-        return { emotion, frequency, change };
-      });
-      
-      // Ensure we always have trend data by adding fallback entries if needed
-      if (trends.length === 0 || trends.every(t => t.frequency === 0)) {
+      // Use demo trends only if no real data is available
+      const finalTrends = trends.length === 0 ? getDemoTrends() : trends;
+      if (trends.length === 0) {
         console.log('No valid trend data detected, using demo trends');
-        trends = getDemoTrends();
       }
-      
-      // Sort by frequency
-      trends.sort((a, b) => b.frequency - a.frequency);
-      
-      console.log('Final trends data:', trends);
-      
-      return {
-        insight: finalInsight,
-        strengths: topStrengths,
-        areas: areasForDevelopment,
-        trends: trends,
-        actions: actionSuggestions
-      };
-    } catch (error) {
-      console.error('Error in ML emotional analysis:', error);
-      console.log('Using demo trends due to error');
-      return {
-        insight: getEmotionBasedInsight(currentEmotion),
-        strengths: ['Emotional Awareness', 'Empathy', 'Resilience'],
-        areas: ['Emotional Regulation', 'Stress Management'],
-        trends: getDemoTrends(),
-        actions: getEmotionActionSuggestions(currentEmotion)
-      };
-    }
-  }, [journalEntries, currentEmotion]);
-  
-  // Optimize analyzeEmotionalData to be more efficient on re-runs
-  const analyzeEmotionalData = useCallback(async () => {
-    setLoading(true);
-    setModelStatus('loading');
-    console.log("Starting emotional data analysis for emotion:", currentEmotion);
-    
-    try {
-      // Check if Hugging Face is available
-      if (!isHuggingFaceAvailable()) {
-        throw new Error('Hugging Face API key not configured');
-      }
-      
-      // Get emotional data from the model
-      const results = await processEmotionalData();
-      console.log("Processed emotional data:", results);
       
       // Update state with results
-      setEmotionalInsight(results.insight);
-      setEmotionalStrengths(results.strengths);
-      setEmotionalAreas(results.areas);
-      setEmotionTrends(results.trends);
-      console.log("Setting emotion trends:", results.trends);
-      setActionSuggestions(results.actions || getEmotionActionSuggestions(currentEmotion));
+      setEmotionalInsight(analysis.insights || getEmotionBasedInsight(currentEmotion));
+      setEmotionalStrengths(analysis.suggestions ? analysis.suggestions.slice(0, 3) : ['Emotional Awareness', 'Empathy', 'Resilience']);
+      setEmotionalAreas(['Emotional Regulation', 'Stress Management']);
+      setEmotionTrends(finalTrends);
+      console.log('Setting emotion trends:', finalTrends);
+      setActionSuggestions(actionSuggestions);
       setModelStatus('ready');
       
       // Only show toast on initial load or after errors, not on every emotion change
@@ -425,20 +233,19 @@ const EmotionalInsightML: React.FC<EmotionalInsightMLProps> = ({
       setModelStatus('error');
       
       // Set error message
-      setError('The ML-based analysis is unavailable at the moment. Please try again later.');
+      setError('The emotion analysis service is unavailable at the moment. Please try again later.');
       
-      // Set some default values for trends so the UI isn't empty
-      const demoTrends = getDemoTrends();
-      console.log("Using demo trends due to error:", demoTrends);
-      setEmotionTrends(demoTrends);
-      
-      // Set default action suggestions based on current emotion
+      // Set fallback values using local functions
+      setEmotionalInsight(getEmotionBasedInsight(currentEmotion));
+      setEmotionalStrengths(['Emotional Awareness', 'Empathy', 'Resilience']);
+      setEmotionalAreas(['Emotional Regulation', 'Stress Management']);
+      setEmotionTrends(getDemoTrends());
       setActionSuggestions(getEmotionActionSuggestions(currentEmotion));
       
       if (initialLoading) {
         toast({
-          title: 'ML Analysis Failed',
-          description: 'The ML model is temporarily unavailable. Using backup data for visualization.',
+          title: 'Analysis Failed',
+          description: 'The emotion analysis service is temporarily unavailable. Using backup data for visualization.',
           variant: 'destructive'
         });
         setInitialLoading(false);
@@ -446,33 +253,41 @@ const EmotionalInsightML: React.FC<EmotionalInsightMLProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [currentEmotion, initialLoading, modelStatus, processEmotionalData, toast]);
+  }, [currentEmotion, journalEntries, loading, initialLoading, modelStatus, toast]); // Remove processEmotionalData from dependencies
   
-  // Initial analysis on mount or when dependencies change
+  // Debounced effect to prevent rapid re-analysis
   useEffect(() => {
-    console.log("Emotion changed to:", currentEmotion);
-    // Always refresh analysis when current emotion changes
-    analyzeEmotionalData();
-  }, [currentEmotion, analyzeEmotionalData]); // Include analyzeEmotionalData in dependencies
+    // Only run analysis if not already loading and not in initial state
+    if (!loading) {
+      const debounceTimer = setTimeout(() => {
+        console.log('Emotion changed to:', currentEmotion);
+        analyzeEmotionalData();
+      }, 1000); // 1 second debounce
+      
+      return () => clearTimeout(debounceTimer);
+    }
+  }, [currentEmotion]); // Only depend on currentEmotion, not the function
+  
+  // Initial analysis on mount only
+  useEffect(() => {
+    if (initialLoading) {
+      analyzeEmotionalData();
+    }
+  }, []); // Empty dependency array for initial load only
   
   // Function to get demo trends when no real data is available
   const getDemoTrends = (): EmotionTrend[] => {
     console.log("Generating demo trends data");
     return [
-      { emotion: 'joy', frequency: 35, change: 5 },
-      { emotion: 'neutral', frequency: 25, change: -2 },
-      { emotion: 'sadness', frequency: 15, change: -8 },
-      { emotion: 'surprise', frequency: 10, change: 3 },
-      { emotion: 'anger', frequency: 8, change: -5 },
-      { emotion: 'fear', frequency: 5, change: -1 },
-      { emotion: 'love', frequency: 2, change: 2 }
+      { emotion: 'joy', frequency: 35, change: 5, intensity: 8 },
+      { emotion: 'neutral', frequency: 25, change: -2, intensity: 5 },
+      { emotion: 'sadness', frequency: 15, change: -8, intensity: 3 },
+      { emotion: 'surprise', frequency: 10, change: 3, intensity: 6 },
+      { emotion: 'anger', frequency: 8, change: -5, intensity: 7 },
+      { emotion: 'fear', frequency: 5, change: -1, intensity: 4 },
+      { emotion: 'love', frequency: 2, change: 2, intensity: 7 }
     ];
   };
-  
-  // Debug trends data when it changes
-  useEffect(() => {
-    console.log("Emotion trends updated:", emotionTrends);
-  }, [emotionTrends]);
   
   return (
     <Card className="w-full h-full glass dark:glass-dark border-none shadow-lg animate-fade-in">
@@ -487,8 +302,8 @@ const EmotionalInsightML: React.FC<EmotionalInsightMLProps> = ({
             modelStatus === 'error' ? 'bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-200' :
             'bg-blue-200 text-blue-900 dark:bg-blue-800 dark:text-blue-200'
           }`}>
-            {modelStatus === 'ready' ? 'Model Ready' : 
-             modelStatus === 'error' ? 'Using Backup' : 'Loading...'}
+            {modelStatus === 'ready' ? 'Analysis Ready' : 
+             modelStatus === 'error' ? 'Using Backup' : 'Analyzing...'}
           </div>
         </div>
       </CardHeader>
@@ -637,7 +452,7 @@ const EmotionalInsightML: React.FC<EmotionalInsightMLProps> = ({
                 
                 {modelStatus === 'error' && (
                   <div className="bg-amber-100 dark:bg-amber-900/20 text-amber-800 dark:text-amber-100 rounded-lg p-2 mb-3 text-xs">
-                    Using visualization data. ML analysis currently unavailable.
+                    Using visualization data. Analysis service currently unavailable.
                   </div>
                 )}
                 
@@ -664,6 +479,7 @@ const EmotionalInsightML: React.FC<EmotionalInsightMLProps> = ({
                             </span>
                             <div className="flex items-center">
                               <span className="mr-2 font-medium">{trend.frequency}%</span>
+                              <span className="mr-2 text-xs">_intensity: {trend.intensity}_</span>
                               <span className={
                                 trend.change > 0 
                                   ? 'text-green-600 dark:text-green-400 font-medium' 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,7 +15,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import emotionService from '@/utils/emotionService';
-import { openRouterService } from '@/services/OpenRouterService';
 
 interface RealtimeEmotionDetectorProps {
   onEmotionDetected?: (emotion: string, intensity: number) => void;
@@ -30,11 +29,11 @@ interface EmotionHistoryItem {
   timestamp: Date;
 }
 
-const RealtimeEmotionDetector: React.FC<RealtimeEmotionDetectorProps> = ({ 
+const RealtimeEmotionDetector = ({
   onEmotionDetected,
   useHuggingFace = false,
   useOpenRouter = false
-}) => {
+}: RealtimeEmotionDetectorProps) => {
   const [text, setText] = useState('');
   const [emotion, setEmotion] = useState<string | null>(null);
   const [confidence, setConfidence] = useState(0);
@@ -59,14 +58,17 @@ const RealtimeEmotionDetector: React.FC<RealtimeEmotionDetectorProps> = ({
     checkBackend();
   }, []);
 
-  // Debounce function for real-time analysis
-  const debounce = (func: Function, delay: number) => {
-    let timeoutId: NodeJS.Timeout;
-    return function(...args: any[]) {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => func(...args), delay);
-    };
-  };
+  // Stable debounce function
+  const debounce = useMemo(
+    () => (func: Function, delay: number) => {
+      let timeoutId: NodeJS.Timeout;
+      return function(...args: any[]) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func(...args), delay);
+      };
+    },
+    []
+  );
 
   // Speech recognition setup
   const setupSpeechRecognition = () => {
@@ -108,131 +110,135 @@ const RealtimeEmotionDetector: React.FC<RealtimeEmotionDetectorProps> = ({
     }
   }, []);
 
-  // Analyze emotion using our service
+  // Use ref to store the last processed text to prevent duplicate calls
+  const lastProcessedTextRef = useRef<string>('');
+  const processingRef = useRef<boolean>(false);
+  
+  // Analyze emotion using our emotion service (no direct API calls)
   const analyzeEmotion = useCallback(async (inputText: string) => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || isAnalyzing || processingRef.current) return;
     
+    // Prevent duplicate processing of the same text
+    const trimmedText = inputText.trim();
+    if (trimmedText === lastProcessedTextRef.current) {
+      console.log("Skipping duplicate text analysis:", trimmedText.substring(0, 50));
+      return;
+    }
+    
+    processingRef.current = true;
+    lastProcessedTextRef.current = trimmedText;
     setIsAnalyzing(true);
     setError(null);
     
     try {
-      let emotionResult;
+      console.log("Using emotionService for emotion detection:", trimmedText.substring(0, 50));
+      const emotionResult = await emotionService.detectEmotion(trimmedText);
       
-      // Use OpenRouter via backend service if enabled
-      if (useOpenRouter) {
-        console.log("Using OpenRouter via backend service for emotion detection");
-        try {
-          const result = await openRouterService.detectEmotion(inputText);
-          emotionResult = {
-            emotion: result.emotion,
-            confidence: result.confidence,
-            intensity: Math.round(result.confidence * 10)
-          };
-          console.log("OpenRouter backend service result:", emotionResult);
-        } catch (error) {
-          console.error("OpenRouter service error, falling back to HuggingFace:", error);
-          emotionResult = await emotionService.detectEmotion(inputText);
-        }
-      } 
-      // Use HuggingFace if enabled
-      else if (useHuggingFace) {
-        console.log("Using HuggingFace for emotion detection");
-        emotionResult = await emotionService.detectEmotion(inputText);
-        console.log("HuggingFace emotion detection result:", emotionResult);
-      } 
-      // Use the backend API as final fallback
-      else {
-        console.log("Using backend API for emotion detection");
-        try {
-          const response = await fetch('http://localhost:8000/detect-emotion', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ text: inputText }),
-          });
-          
-          if (response.ok) {
-            emotionResult = await response.json();
-            console.log("Backend API emotion detection result:", emotionResult);
-          } else {
-            throw new Error('Backend API failed');
-          }
-        } catch (apiError) {
-          console.error("Error using backend API:", apiError);
-          // Fall back to local detection if API fails
-          emotionResult = await emotionService.detectEmotion(inputText);
-          console.log("Local emotion detection result:", emotionResult);
-        }
-      }
+      console.log("EmotionService result:", emotionResult);
       
       if (emotionResult && emotionResult.emotion) {
-        setEmotion(emotionResult.emotion);
-        setConfidence(Math.round(emotionResult.confidence * 100));
+        // Only update if emotion has significantly changed to prevent flickering
+        const newConfidence = Math.round(emotionResult.confidence * 100);
+        const emotionChanged = emotion !== emotionResult.emotion;
+        const confidenceChanged = Math.abs(confidence - newConfidence) > 5; // 5% threshold
         
-        // Add to emotion history
-        const historyItem: EmotionHistoryItem = {
-          emotion: emotionResult.emotion,
-          confidence: emotionResult.confidence,
-          timestamp: new Date()
-        };
-        
-        setEmotionHistory(prev => {
-          const newHistory = [historyItem, ...prev].slice(0, 5);
-          // Save to localStorage for persistence
-          try {
-            localStorage.setItem('realtimeEmotionHistory', JSON.stringify(newHistory));
-          } catch (e) {
-            console.error('Error saving emotion history to localStorage:', e);
-          }
-          return newHistory;
-        });
-        
-        if (onEmotionDetected) {
-          onEmotionDetected(emotionResult.emotion, emotionResult.intensity || Math.round(emotionResult.confidence * 10));
+        if (emotionChanged || confidenceChanged) {
+          setEmotion(emotionResult.emotion);
+          setConfidence(newConfidence);
         }
         
-        // Show feedback only on manual analysis or first real-time detection
+        // Add to emotion history only for significant changes
+        if (emotionChanged) {
+          const historyItem: EmotionHistoryItem = {
+            emotion: emotionResult.emotion,
+            confidence: emotionResult.confidence,
+            timestamp: new Date()
+          };
+          
+          setEmotionHistory(prev => {
+            // Check if this is a duplicate entry to prevent unnecessary updates
+            const isDuplicate = prev.length > 0 && 
+              prev[0].emotion === historyItem.emotion &&
+              Math.abs(prev[0].timestamp.getTime() - historyItem.timestamp.getTime()) < 5000;
+            
+            if (isDuplicate) return prev;
+            
+            const newHistory = [historyItem, ...prev].slice(0, 5);
+            // Save to localStorage for persistence
+            try {
+              localStorage.setItem('realtimeEmotionHistory', JSON.stringify(newHistory));
+            } catch (e) {
+              console.error('Error saving emotion history to localStorage:', e);
+            }
+            return newHistory;
+          });
+          
+          // Only call onEmotionDetected for new emotions to prevent loops
+          if (onEmotionDetected) {
+            onEmotionDetected(emotionResult.emotion, emotionResult.intensity || Math.round(emotionResult.confidence * 10));
+          }
+        }
+        
+        // Show feedback only on manual analysis
         if (!isRealtime) {
           toast({
-            title: `Detected Emotion: ${emotionResult.emotion}`,
-            description: `We've analyzed your input with ${Math.round(emotionResult.confidence * 100)}% confidence.`,
+            title: `Feeling: ${getEmotionDescription(emotionResult.emotion)}`,
+            description: `Emotion analysis complete.`,
             variant: "default",
           });
         }
       } else {
         setError("Could not detect emotion. Please try again with different wording.");
-        toast({
-          title: 'Emotion Analysis Failed',
-          description: 'There was an error with the emotion analysis. Please try again later.',
-          variant: 'destructive',
-        });
       }
     } catch (error) {
       console.error('Error analyzing emotion:', error);
-      
       setError('An error occurred while analyzing. Please try again.');
-      toast({
-        title: 'Emotion Analysis Failed',
-        description: 'There was an error with the emotion analysis. Please try again later.',
-        variant: 'destructive',
-      });
     } finally {
       setIsAnalyzing(false);
+      processingRef.current = false;
     }
-  }, [onEmotionDetected, isRealtime, toast, useOpenRouter, useHuggingFace]);
+  }, [emotion, confidence, isAnalyzing, onEmotionDetected, isRealtime, toast]);
 
-  // Debounced version for real-time analysis
-  const debouncedAnalyzeEmotion = useCallback(
-    debounce((text: string) => analyzeEmotion(text), 1000),
-    [analyzeEmotion]
+  // Memoized debounced version for real-time analysis with longer delay
+  const debouncedAnalyzeEmotion = useMemo(
+    () => debounce((text: string) => analyzeEmotion(text), 2000), // Increased to 2 seconds
+    [debounce, analyzeEmotion]
   );
 
-  // Effect to handle real-time analysis
+  // Previous text ref to prevent duplicate calls
+  const previousTextRef = useRef<string>('');
+  const textChangeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Effect to handle real-time analysis with improved duplicate detection
   useEffect(() => {
-    if (isRealtime && text.trim().length > 10) {
-      debouncedAnalyzeEmotion(text);
+    if (isRealtime && text.trim().length > 15) { // Increased minimum length
+      const trimmedText = text.trim();
+      
+      // Clear any pending timeout
+      if (textChangeTimeoutRef.current) {
+        clearTimeout(textChangeTimeoutRef.current);
+      }
+      
+      // Check if text has meaningfully changed (not just whitespace or single chars)
+      const textChanged = trimmedText !== previousTextRef.current;
+      const textLengthChanged = Math.abs(trimmedText.length - previousTextRef.current.length) > 5;
+      
+      if (textChanged && (textLengthChanged || trimmedText.length > 50)) {
+        console.log('Scheduling analysis for text change:', trimmedText.substring(0, 30));
+        previousTextRef.current = trimmedText;
+        
+        // Set a timeout to prevent rapid successive calls
+        textChangeTimeoutRef.current = setTimeout(() => {
+          debouncedAnalyzeEmotion(trimmedText);
+        }, 500);
+      }
     }
+    
+    return () => {
+      if (textChangeTimeoutRef.current) {
+        clearTimeout(textChangeTimeoutRef.current);
+      }
+    };
   }, [text, isRealtime, debouncedAnalyzeEmotion]);
 
   // Toggle voice input
@@ -261,11 +267,13 @@ const RealtimeEmotionDetector: React.FC<RealtimeEmotionDetectorProps> = ({
             transcript += event.results[i][0].transcript + ' ';
           }
         }
-        setText(transcript.trim());
+        const finalTranscript = transcript.trim();
+        setText(finalTranscript);
         
-        // Analyze after short pause in speaking
-        if (transcript.trim().length > 10) {
-          debouncedAnalyzeEmotion(transcript.trim());
+        // Only analyze if text is different and sufficient length
+        if (finalTranscript.length > 10 && finalTranscript !== previousTextRef.current) {
+          previousTextRef.current = finalTranscript;
+          debouncedAnalyzeEmotion(finalTranscript);
         }
       };
       
@@ -336,16 +344,16 @@ const RealtimeEmotionDetector: React.FC<RealtimeEmotionDetectorProps> = ({
     if (!emotion) return '';
     
     const colorMap: Record<string, string> = {
-      joy: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100',
-      sadness: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100',
-      anger: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100',
-      fear: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-100',
-      love: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-100',
-      surprise: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-100',
-      neutral: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100'
+      joy: 'bg-gradient-to-br from-yellow-400 to-orange-500 text-white',
+      sadness: 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white',
+      anger: 'bg-gradient-to-br from-red-500 to-red-600 text-white',
+      fear: 'bg-gradient-to-br from-purple-500 to-purple-600 text-white',
+      love: 'bg-gradient-to-br from-pink-500 to-rose-500 text-white',
+      surprise: 'bg-gradient-to-br from-teal-400 to-cyan-500 text-white',
+      neutral: 'bg-gradient-to-br from-gray-400 to-gray-500 text-white'
     };
     
-    return colorMap[emotion] || 'bg-gray-100 dark:bg-gray-800';
+    return colorMap[emotion] || 'bg-gradient-to-br from-gray-400 to-gray-500 text-white';
   };
   
   // Get confidence color for progress bar
@@ -382,6 +390,21 @@ const RealtimeEmotionDetector: React.FC<RealtimeEmotionDetectorProps> = ({
     };
     
     return dotColorMap[emotion] || 'bg-gray-500';
+  };
+
+  // Get emotion description for users
+  const getEmotionDescription = (emotion: string): string => {
+    const descriptions: Record<string, string> = {
+      joy: 'Feeling positive and uplifted',
+      sadness: 'Experiencing some low feelings',
+      anger: 'Feeling frustrated or upset',
+      fear: 'Sensing worry or anxiety',
+      love: 'Feeling warm and caring',
+      surprise: 'Experiencing something unexpected',
+      neutral: 'In a balanced state'
+    };
+    
+    return descriptions[emotion] || descriptions.neutral;
   };
 
   return (
@@ -512,19 +535,14 @@ const RealtimeEmotionDetector: React.FC<RealtimeEmotionDetectorProps> = ({
               </div>
               <div className="flex-1">
                 <div className="flex justify-between items-center mb-1">
-                  <p className="font-medium capitalize">{emotion}</p>
-                  <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                    {confidence}% confidence
+                  <p className="font-medium capitalize text-lg">{emotion}</p>
+                  <span className="text-sm text-white/80 bg-white/20 px-3 py-1 rounded-full">
+                    Strong feeling
                   </span>
                 </div>
-                <Progress 
-                  value={confidence} 
-                  className="h-1.5" 
-                  style={{
-                    backgroundColor: 'var(--background)',
-                    '--progress-background': getConfidenceColor(confidence)
-                  } as React.CSSProperties}
-                />
+                <p className="text-sm text-white/70 mt-1">
+                  {getEmotionDescription(emotion)}
+                </p>
               </div>
             </div>
           </div>
@@ -545,7 +563,6 @@ const RealtimeEmotionDetector: React.FC<RealtimeEmotionDetectorProps> = ({
                       <span className="text-sm font-medium capitalize">{item.emotion}</span>
                     </div>
                     <div className="flex items-center">
-                      <span className="text-xs text-muted-foreground mr-2">{Math.round(item.confidence * 100)}%</span>
                       <span className="text-xs text-muted-foreground">{formatTimestamp(item.timestamp)}</span>
                     </div>
                   </div>
@@ -556,13 +573,11 @@ const RealtimeEmotionDetector: React.FC<RealtimeEmotionDetectorProps> = ({
         )}
         
         <p className="text-xs text-center text-muted-foreground mt-4">
-          {backendAvailable 
-            ? "Using FastAPI ML backend for high-performance emotion analysis" 
-            : "Using local emotion detection"}
+          Real-time emotion understanding to support your wellbeing
         </p>
       </CardContent>
     </Card>
   );
 };
 
-export default React.memo(RealtimeEmotionDetector);
+export default memo(RealtimeEmotionDetector);

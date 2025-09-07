@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Volume2, VolumeX, UserRound, Brain, Sparkles } from 'lucide-react';
@@ -20,7 +20,7 @@ interface QwenAISuggestionVoiceProps {
   autoPlay?: boolean;
 }
 
-const QwenAISuggestionVoice: React.FC<QwenAISuggestionVoiceProps> = ({
+const QwenAISuggestionVoice = ({
   currentEmotion,
   resources,
   onResourceSelect,

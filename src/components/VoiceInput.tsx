@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -15,7 +15,7 @@ interface VoiceInputProps {
   language?: string;
 }
 
-const VoiceInput: React.FC<VoiceInputProps> = ({
+const VoiceInput = ({
   onTranscript,
   onInterimTranscript,
   disabled = false,

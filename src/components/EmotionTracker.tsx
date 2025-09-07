@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,7 @@ interface EmotionTrackerProps {
   onEmotionSelected?: (emotion: Emotion, intensity?: number) => void;
 }
 
-const EmotionTracker: React.FC<EmotionTrackerProps> = ({ onEmotionSelected }) => {
+const EmotionTracker = ({ onEmotionSelected }) => {
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentEmotion, setCurrentEmotion] = useState<Emotion | null>(null);

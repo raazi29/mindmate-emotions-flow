@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { VoicePreset, speechService, getVoicePresetForEmotion } from '@/utils/speechUtils';
 import { Volume2, VolumeX, Settings, Loader2 } from 'lucide-react';
@@ -27,7 +27,7 @@ export interface AIVoiceButtonProps {
   showSettings?: boolean;
 }
 
-const AIVoiceButton: React.FC<AIVoiceButtonProps> = ({
+const AIVoiceButton = ({
   text,
   emotion,
   summary,

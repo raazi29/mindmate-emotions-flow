@@ -6,7 +6,7 @@ interface LoadingFallbackProps {
   message?: string;
 }
 
-const LoadingFallback: React.FC<LoadingFallbackProps> = ({ 
+const LoadingFallback = ({ 
   height = 'h-64',
   message = 'Loading content...'
 }) => {

@@ -2,9 +2,7 @@
 import { detectEmotionOpenRouter as detectEmotionViaOR } from '@/utils/openRouterAPI';
 
 // Use Vite's import.meta.env instead of process.env for environment detection
-const API_BASE_URL = import.meta.env.PROD
-  ? 'https://api.mindmate-app.com'
-  : 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Set API request timeout (in milliseconds) - shorter for real-time responsiveness
 const API_TIMEOUT = 3000;
@@ -37,11 +35,21 @@ interface StatusResponse {
   models_loaded: Record<string, boolean>;
   cuda_available: boolean;
   transformers_available: boolean;
+ local_neurofeel_available?: boolean;
+  using_local_neurofeel?: boolean;
 }
 
-// In-memory cache for API responses - reduce for real-time usage
+// In-memory cache for API responses with longer TTL
 const responseCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 1000 * 60 * 10; // 10 minutes instead of 1 hour for more real-time updates
+const CACHE_TTL = 1000 * 60 * 10; // 10 minutes for better caching
+
+// Rate limiting to prevent API spam
+const requestTimestamps = new Map<string, number[]>();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 15; // Reduced from 20 to 15
+
+// Active requests tracking to prevent duplicate calls
+const activeRequests = new Map<string, Promise<any>>();
 
 // Event system for real-time updates
 type EmotionEventListener = (emotion: EmotionResult) => void;
@@ -50,7 +58,31 @@ const emotionEventListeners: EmotionEventListener[] = [];
 // Track API health
 let isBackendHealthy = false;
 let lastHealthCheck = 0;
-const HEALTH_CHECK_INTERVAL = 1000 * 30; // 30 seconds for quicker recovery
+const HEALTH_CHECK_INTERVAL = 1000 * 120; // 2 minutes instead of 30 seconds
+
+// Helper function to check rate limiting
+const isRateLimited = (text: string): boolean => {
+  const cacheKey = createCacheKey(text);
+  const now = Date.now();
+  
+  if (!requestTimestamps.has(cacheKey)) {
+    requestTimestamps.set(cacheKey, []);
+  }
+  
+  const timestamps = requestTimestamps.get(cacheKey)!;
+  
+  // Remove old timestamps
+  const validTimestamps = timestamps.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW);
+  
+  if (validTimestamps.length >= MAX_REQUESTS_PER_WINDOW) {
+    console.warn(`Rate limited for text: ${text.substring(0, 50)}...`);
+    return true;
+  }
+  
+  validTimestamps.push(now);
+  requestTimestamps.set(cacheKey, validTimestamps);
+  return false;
+};
 
 // Helper function to fetch with timeout
 const fetchWithTimeout = async (url: string, options: RequestInit, timeout = API_TIMEOUT): Promise<Response> => {
@@ -148,48 +180,95 @@ export const detectEmotion = async (text: string): Promise<EmotionResult> => {
     return { emotion: 'neutral', confidence: 1.0 };
   }
 
+  const trimmedText = text.trim();
+  const cacheKey = createCacheKey(trimmedText);
+  
+  // Check if there's already an active request for this exact text
+  if (activeRequests.has(cacheKey)) {
+    console.log('Waiting for existing request for:', trimmedText.substring(0, 30));
+    try {
+      const result = await activeRequests.get(cacheKey)!;
+      return {
+        emotion: result.emotion as Emotion,
+        confidence: result.confidence,
+        intensity: Math.round(result.confidence * 10)
+      };
+    } catch (error) {
+      // If the shared request fails, we'll continue with a new request
+      console.warn('Shared request failed, making new request');
+    }
+  }
+  
+  // Check rate limiting first
+  if (isRateLimited(trimmedText)) {
+    // Return cached result if available, otherwise neutral
+    const cachedItem = responseCache.get(cacheKey);
+    if (cachedItem) {
+      console.log('Rate limited, returning cached result for:', trimmedText.substring(0, 30));
+      return {
+        emotion: cachedItem.data.emotion as Emotion,
+        confidence: cachedItem.data.confidence,
+        intensity: Math.round(cachedItem.data.confidence * 10)
+      };
+    }
+    console.log('Rate limited, returning neutral for:', trimmedText.substring(0, 30));
+    return { emotion: 'neutral', confidence: 0.8 };
+  }
+
   // Check cache first
-  const cacheKey = createCacheKey(text);
   const cachedItem = responseCache.get(cacheKey);
   
   if (cachedItem && Date.now() - cachedItem.timestamp < CACHE_TTL) {
+    console.log('Using cached result for:', trimmedText.substring(0, 30));
     const result = {
       emotion: cachedItem.data.emotion as Emotion,
       confidence: cachedItem.data.confidence,
       intensity: Math.round(cachedItem.data.confidence * 10)
     };
     
-    // Even for cached results, notify listeners to ensure UI updates
-    notifyEmotionListeners(result);
-    
+    // Don't notify listeners for cached results to prevent loops
     return result;
   }
 
+  // Create and track the request promise
+  const requestPromise = makeEmotionRequest(trimmedText, cacheKey);
+  activeRequests.set(cacheKey, requestPromise);
+  
+  try {
+    const result = await requestPromise;
+    return result;
+  } finally {
+    // Clean up the active request
+    activeRequests.delete(cacheKey);
+  }
+};
+
+// Separate function to make the actual API request
+const makeEmotionRequest = async (trimmedText: string, cacheKey: string): Promise<EmotionResult> => {
   try {
     if (!isBackendHealthy && Date.now() - lastHealthCheck > HEALTH_CHECK_INTERVAL) {
-      // Try to check health if we think backend is down, but only after interval
       await checkBackendStatus();
     }
     
     if (!isBackendHealthy) {
-      // If backend is unhealthy, try OpenRouter (client-side) if key is present, else fallback
       if (import.meta.env.VITE_OPENROUTER_API_KEY) {
-        const or = await detectEmotionViaOR(text);
+        const or = await detectEmotionViaOR(trimmedText);
         const result = { emotion: or.emotion as Emotion, confidence: or.confidence, intensity: or.intensity || Math.round(or.confidence * 10) };
         notifyEmotionListeners(result);
         return result;
       }
-      const fallbackResult = fallbackEmotionDetection(text);
+      const fallbackResult = fallbackEmotionDetection(trimmedText);
       notifyEmotionListeners(fallbackResult);
       return fallbackResult;
     }
     
-    const response = await fetchWithTimeout(`${API_BASE_URL}/detect-emotion`, {
+    console.log('Making API request for:', trimmedText.substring(0, 30));
+    const response = await fetchWithTimeout(`${API_BASE_URL}/api/detect-emotion`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ text, model_preference: 'fast' }),
+      body: JSON.stringify({ text: trimmedText }),
     });
 
     if (!response.ok) {
@@ -209,21 +288,19 @@ export const detectEmotion = async (text: string): Promise<EmotionResult> => {
       intensity: Math.round(data.confidence * 10)
     };
     
-    // Notify listeners of the new emotion
-    console.log("emotionService: New emotion detected, notifying listeners:", result.emotion);
+    // Only notify listeners for new (non-cached) emotions
+    console.log("emotionService: New emotion detected:", result.emotion);
     notifyEmotionListeners(result);
     
     return result;
   } catch (error) {
     console.error('Error detecting emotion:', error);
     
-    // Mark backend as unhealthy
     isBackendHealthy = false;
     
-    // Try OpenRouter as a higher-quality fallback if available
     if (import.meta.env.VITE_OPENROUTER_API_KEY) {
       try {
-        const or = await detectEmotionViaOR(text);
+        const or = await detectEmotionViaOR(trimmedText);
         const result = { emotion: or.emotion as Emotion, confidence: or.confidence, intensity: or.intensity || Math.round(or.confidence * 10) };
         notifyEmotionListeners(result);
         return result;
@@ -231,7 +308,7 @@ export const detectEmotion = async (text: string): Promise<EmotionResult> => {
         // fall through to rule-based
       }
     }
-    const fallbackResult = fallbackEmotionDetection(text);
+    const fallbackResult = fallbackEmotionDetection(trimmedText);
     notifyEmotionListeners(fallbackResult);
     return fallbackResult;
   }
@@ -284,12 +361,12 @@ export const batchDetectEmotion = async (texts: string[]): Promise<EmotionResult
       return fallbackResults;
     }
     
-    const response = await fetchWithTimeout(`${API_BASE_URL}/batch-detect-emotion`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/api/batch-detect-emotion`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ texts: batchTexts, model_preference: 'fast' }),
+      body: JSON.stringify({ texts: batchTexts }),
     }, API_TIMEOUT + (batchTexts.length * 50)); // Adjust timeout for batch size
 
     if (!response.ok) {
@@ -331,60 +408,44 @@ export const batchDetectEmotion = async (texts: string[]): Promise<EmotionResult
 };
 
 // Simple fallback emotion detection when API is unavailable
+// Uses basic HuggingFace-style keyword matching only
 const fallbackEmotionDetection = (text: string): EmotionResult => {
   const lowerText = text.toLowerCase();
   
-  // Basic keyword matching
+  // Very basic keyword matching for fallback only
   const emotionKeywords: Record<Emotion, string[]> = {
-    joy: ['happy', 'joy', 'excited', 'great', 'good', 'awesome', 'excellent', 'wonderful', 'delighted'],
-    sadness: ['sad', 'unhappy', 'depressed', 'down', 'miserable', 'upset', 'disappointed', 'heartbroken'],
-    anger: ['angry', 'mad', 'furious', 'annoyed', 'irritated', 'frustrated', 'enraged', 'outraged'],
-    fear: ['afraid', 'scared', 'frightened', 'worried', 'anxious', 'terrified', 'nervous', 'panicked'],
-    love: ['love', 'adore', 'care', 'cherish', 'affection', 'fond', 'passionate', 'devoted'],
-    surprise: ['surprised', 'amazed', 'astonished', 'shocked', 'stunned', 'startled', 'unexpected'],
-    neutral: ['okay', 'fine', 'alright', 'neutral', 'normal', 'average', 'moderate']
+    joy: ['happy', 'joy', 'excited', 'great', 'good', 'wonderful'],
+    sadness: ['sad', 'down', 'depressed', 'upset', 'disappointed'],
+    anger: ['angry', 'mad', 'furious', 'annoyed', 'frustrated'],
+    fear: ['afraid', 'scared', 'worried', 'anxious', 'nervous'],
+    love: ['love', 'adore', 'care', 'affection'],
+    surprise: ['surprised', 'amazed', 'shocked', 'unexpected'],
+    neutral: ['okay', 'fine', 'alright', 'normal']
   };
   
-  // Count keyword matches
-  const emotionScores: Record<Emotion, number> = {
-    joy: 0,
-    sadness: 0,
-    anger: 0,
-    fear: 0,
-    love: 0,
-    surprise: 0,
-    neutral: 0.1, // Slight bias toward neutral
-  };
+  // Simple scoring
+  let bestEmotion: Emotion = 'neutral';
+  let maxMatches = 0;
   
   Object.entries(emotionKeywords).forEach(([emotion, keywords]) => {
-    keywords.forEach(keyword => {
-      if (lowerText.includes(keyword)) {
-        emotionScores[emotion as Emotion] += 0.2;
-      }
-    });
-  });
-  
-  // Find emotion with highest score
-  let maxEmotion: Emotion = 'neutral';
-  let maxScore = 0.1;
-  
-  Object.entries(emotionScores).forEach(([emotion, score]) => {
-    if (score > maxScore) {
-      maxEmotion = emotion as Emotion;
-      maxScore = score;
+    const matches = keywords.filter(keyword => lowerText.includes(keyword)).length;
+    if (matches > maxMatches) {
+      bestEmotion = emotion as Emotion;
+      maxMatches = matches;
     }
   });
   
   return {
-    emotion: maxEmotion,
-    confidence: Math.min(0.7, maxScore), // Cap confidence at 0.7 for fallback
-    intensity: Math.round(Math.min(0.7, maxScore) * 10)
+    emotion: bestEmotion,
+    confidence: maxMatches > 0 ? 0.6 : 0.5, // Lower confidence for fallback
+    intensity: Math.round((maxMatches > 0 ? 0.6 : 0.5) * 10)
   };
 };
 
-// Clear cache
+// Clear cache and rate limits
 export const clearEmotionCache = () => {
   responseCache.clear();
+  requestTimestamps.clear();
   // Force health check on next API call
   lastHealthCheck = 0;
 };
@@ -398,25 +459,17 @@ export const resetBackendHealthState = () => {
 // Poll the backend for real-time updates
 let realTimePollTimer: NodeJS.Timeout | null = null;
 
-// Start polling for real-time updates
-export const startRealtimeUpdates = (intervalMs = 5000) => {
+// Start polling for real-time updates - much less frequent to avoid spam
+export const startRealtimeUpdates = (intervalMs = 60000) => { // Increased from 5s to 60s
   if (realTimePollTimer) {
     clearInterval(realTimePollTimer);
   }
   
   realTimePollTimer = setInterval(async () => {
     try {
-      // Check if backend is available first
+      // Only check if backend is available, don't ping unnecessarily
       const status = await checkBackendStatus();
-      if (status && status.status === 'online') {
-        // Do a quick ping to keep connection alive
-        await fetchWithTimeout(`${API_BASE_URL}/status`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-      }
+      // Removed the extra ping that was causing spam
     } catch (error) {
       console.error('Error in real-time polling:', error);
     }

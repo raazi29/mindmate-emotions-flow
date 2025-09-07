@@ -16,6 +16,14 @@ This FastAPI backend provides high-performance emotion analysis for the MindMate
 - Virtual environment (venv, conda, etc.)
 - Dependencies listed in requirements.txt
 
+## Local NeuroFeel Model
+
+The backend now supports local execution of the NeuroFeel emotion detection model for improved performance and offline capability. To use the local model:
+
+1. Set the environment variable `USE_LOCAL_NEUROFEEL=true`
+2. The model will be automatically downloaded on first use
+3. Subsequent requests will use the cached model for faster inference
+
 ## Setup
 
 1. Create and activate a virtual environment:
@@ -46,6 +54,12 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 # Production mode
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
+
+Note: The backend has two main files:
+- `main.py`: The primary backend implementation with local model support
+- `app.py`: An alternative implementation that uses the Hugging Face API directly
+
+The `main.py` file is the recommended implementation as it supports both local and remote model execution.
 
 ## Docker Setup
 
@@ -82,6 +96,7 @@ You can configure the backend behavior using environment variables or `.env` fil
 - `CACHE_TTL` - Cache time-to-live in seconds (default: 3600)
 - `CACHE_SIZE` - Maximum number of items in cache (default: 1000)
 - `LOG_LEVEL` - Logging level (default: INFO)
+- `USE_LOCAL_NEUROFEEL` - Set to true to use the local NeuroFeel model instead of the Hugging Face API (default: false)
 
 ## Integrating with Frontend
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -18,7 +18,7 @@ interface ActivityDetailModalProps {
   onComplete: () => void;
 }
 
-const ActivityDetailModal: React.FC<ActivityDetailModalProps> = ({
+const ActivityDetailModal = ({
   isOpen, 
   onClose, 
   activity,

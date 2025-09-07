@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
-const TestAuth: React.FC = () => {
+const TestAuth = () => {
   const { user, isLoaded } = useUser();
   const { signOut } = useAuth();
 

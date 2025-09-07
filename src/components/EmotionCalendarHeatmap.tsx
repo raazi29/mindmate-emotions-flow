@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Calendar, LayoutGrid, ChevronLeft, ChevronRight, Info, X, PieChart } from 'lucide-react';
 import { 
@@ -38,10 +38,10 @@ interface DayData {
   emotionCounts: Record<Emotion, number>;
 }
 
-const EmotionCalendarHeatmap: React.FC<EmotionCalendarHeatmapProps> = ({
+const EmotionCalendarHeatmap = ({
   emotionHistory = [],
   days = 28 // Default to 4 weeks
-}) => {
+}: EmotionCalendarHeatmapProps) => {
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
 

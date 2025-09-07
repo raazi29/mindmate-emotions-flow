@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -59,7 +59,7 @@ interface ResourceDetailModalProps {
   onComplete: () => void;
 }
 
-const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
+const ResourceDetailModal = ({
   resource,
   isOpen,
   onClose,
@@ -340,12 +340,12 @@ const ResourceDetailModal: React.FC<ResourceDetailModalProps> = ({
       
       for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
-          const response = await fetch('http://localhost:8000/summarize', {
+          const response = await fetch('http://localhost:8000/openrouter/generate-summary', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
               text: resource.content.text,
               max_length: 250
             }),

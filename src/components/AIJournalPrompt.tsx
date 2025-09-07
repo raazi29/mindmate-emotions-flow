@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +15,7 @@ interface AIJournalPromptProps {
   disabled?: boolean;
 }
 
-const AIJournalPrompt: React.FC<AIJournalPromptProps> = ({
+const AIJournalPrompt = ({
   emotion,
   context,
   previousEntries,
@@ -40,27 +40,17 @@ const AIJournalPrompt: React.FC<AIJournalPromptProps> = ({
     setIsLoading(true);
     
     try {
-      const response = await fetch('http://localhost:8000/generate-journal-prompt', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          emotion,
-          context,
-          previous_entries: previousEntries
-        }),
-        signal: AbortSignal.timeout(8000) // 8 second timeout
-      });
+      // Use fallback prompts directly since API endpoint doesn't exist
+      const fallbacks = {
+        joy: "What brought you joy today? How can you create more moments like this?",
+        sadness: "What feels heavy for you right now? What might help you feel supported?",
+        anger: "What boundary was crossed? How might you respond constructively?",
+        fear: "What are you afraid might happen? What would help you feel safer?",
+        neutral: "What patterns have you noticed in your thoughts or emotions lately?"
+      };
       
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      setPrompt(result.prompt);
-      setFollowUp(result.follow_up);
-      setShowFollowUp(false);
+      setPrompt(fallbacks[emotion as keyof typeof fallbacks] || fallbacks.neutral);
+      setFollowUp("How does reflecting on this make you feel in your body?");
       
     } catch (error) {
       console.error('Error generating journal prompt:', error);
@@ -76,12 +66,6 @@ const AIJournalPrompt: React.FC<AIJournalPromptProps> = ({
       
       setPrompt(fallbacks[emotion as keyof typeof fallbacks] || fallbacks.neutral);
       setFollowUp("How does reflecting on this make you feel in your body?");
-      
-      toast({
-        title: "Couldn't generate a personalized prompt",
-        description: "Using a standard prompt instead. Check your connection.",
-        variant: "destructive"
-      });
       
     } finally {
       setIsLoading(false);

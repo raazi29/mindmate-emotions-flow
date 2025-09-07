@@ -8,7 +8,7 @@ interface ThemeTestProps {
   children: React.ReactNode;
 }
 
-const ThemeTest: React.FC<ThemeTestProps> = ({ children }) => {
+const ThemeTest = ({ children }) => {
   const { theme, setTheme } = useTheme();
   const isDarkMode = theme === 'dark';
   

@@ -1,3 +1,14 @@
+"""
+MindMate Emotions Flow - Clean Backend Implementation
+A robust FastAPI backend for emotion detection and AI wellness chat.
+
+Features:
+- Real-time emotion detection using HuggingFace API
+- AI wellness assistant using Gemini and OpenRouter APIs
+- Enhanced text preprocessing for accurate emotion analysis
+- Comprehensive error handling and fallback mechanisms
+- Real-time logging and status monitoring
+"""
 
 import os
 import re
@@ -109,16 +120,16 @@ async def lifespan(app: FastAPI):
     # Configure Gemini if API key is available
     if GEMINI_API_KEY:
         genai.configure(api_key=GEMINI_API_KEY)
-        logger.info("Gemini API configured")
+        logger.info("✅ Gemini API configured")
     
     # Display API status
     print(f"""
     🏥 MindMate Emotions Flow Backend
     ================================
     📊 API Status:
-       - HuggingFace: {'Ready' if HUGGINGFACE_API_KEY else '❌ Missing Key'}
-       - OpenRouter: {'Ready' if OPENROUTER_API_KEY else '❌ Missing Key'} 
-       - Gemini: {'Ready' if GEMINI_API_KEY else '❌ Missing Key'}
+       - HuggingFace: {'✅ Ready' if HUGGINGFACE_API_KEY else '❌ Missing Key'}
+       - OpenRouter: {'✅ Ready' if OPENROUTER_API_KEY else '❌ Missing Key'} 
+       - Gemini: {'✅ Ready' if GEMINI_API_KEY else '❌ Missing Key'}
     
     🌐 Server: http://localhost:8000
     📖 Docs: http://localhost:8000/docs

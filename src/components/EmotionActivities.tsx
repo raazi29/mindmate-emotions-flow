@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -69,7 +69,7 @@ const ACTIVITIES: Activity[] = [
   }
 ];
 
-const EmotionActivities: React.FC<EmotionActivitiesProps> = ({ emotion = 'neutral' }) => {
+const EmotionActivities = ({ emotion = 'neutral' }) => {
   const [activities, setActivities] = useState<Activity[]>(ACTIVITIES);
   const [activeActivity, setActiveActivity] = useState<Activity | null>(null);
   const { toast } = useToast();

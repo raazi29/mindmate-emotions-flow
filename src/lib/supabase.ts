@@ -6,14 +6,23 @@ const supabaseUrl = SupabaseConfig.url;
 const supabaseKey = SupabaseConfig.anonKey;
 
 // Create client with auth settings to simplify signup
-export const supabase = createClient(supabaseUrl, supabaseKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce'
+let supabaseInstance: any = null;
+
+export function getSupabaseClient() {
+  if (!supabaseInstance) {
+    supabaseInstance = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce'
+      }
+    });
   }
-});
+  return supabaseInstance;
+}
+
+export const supabase = getSupabaseClient();
 
 // Define database types
 export type JournalEntryDB = {
@@ -545,4 +554,4 @@ function getMockJournalEntries(): JournalEntryDB[] {
   }
   
   return mockEntries;
-} 
+}

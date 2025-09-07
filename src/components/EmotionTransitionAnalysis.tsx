@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart3, Clock, TrendingUp, Activity, ArrowRight, Info, BarChart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -13,10 +13,10 @@ interface EmotionTransitionAnalysisProps {
   selectedEmotion?: Emotion | null;
 }
 
-const EmotionTransitionAnalysis: React.FC<EmotionTransitionAnalysisProps> = ({
+const EmotionTransitionAnalysis = ({
   emotionHistory = [],
   selectedEmotion = null
-}) => {
+}: EmotionTransitionAnalysisProps) => {
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
   const [activeTab, setActiveTab] = useState<string>('transitions');

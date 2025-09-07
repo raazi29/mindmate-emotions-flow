@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,7 +20,7 @@ interface MoodJournalProps {
   onNewEntry?: (text: string, emotion?: string) => void;
 }
 
-const MoodJournal: React.FC<MoodJournalProps> = ({ onNewEntry }) => {
+const MoodJournal = ({ onNewEntry }) => {
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [currentEntry, setCurrentEntry] = useState('');
   const [title, setTitle] = useState('');

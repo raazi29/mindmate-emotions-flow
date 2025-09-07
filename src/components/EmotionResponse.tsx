@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Volume2, RefreshCw, Sun, Heart, LucideIcon, BookOpen, Quote, Sparkles, AlertCircle, Crown } from 'lucide-react';
@@ -111,11 +111,11 @@ interface EmotionResponseProps {
   isPremium?: boolean;
 }
 
-const EmotionResponse: React.FC<EmotionResponseProps> = ({ 
+const EmotionResponse = ({ 
   emotion, 
   intensity = 5,
   isPremium = false
-}) => {
+}: EmotionResponseProps) => {
   const [message, setMessage] = useState<string>('');
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [animating, setAnimating] = useState<boolean>(false);
@@ -132,54 +132,14 @@ const EmotionResponse: React.FC<EmotionResponseProps> = ({
     setIsLoading(true);
     setErrorState(null);
     try {
-      // Map message type to API endpoint
-      const apiType = type === 'joke' ? 'jokes' : type === 'quote' ? 'quotes' : 'encouragement';
-      
-      // Create cache key
-      const cacheKey = `${apiType}:${emotion}`;
-      const now = Date.now();
-      
-      // If forcing refresh, call the refresh API endpoint first
-      if (forceRefresh) {
-        setIsForceRefreshing(true);
-        try {
-          await axios.post('http://127.0.0.1:8000/refresh-cache', {
-            type: apiType,
-            emotion: emotion
-          }, { timeout: 8000 });
-          
-          // Update last fetch time
-          lastFetchTimeRef.current[cacheKey] = now;
-          
-          toast({
-            title: 'Content Refreshed',
-            description: `New ${type} content has been fetched!`,
-            variant: 'default'
-          });
-        } catch (refreshError) {
-          console.error(`Error refreshing ${type} content:`, refreshError);
-          // Don't show the error state, just silently try the regular fetch
-        } finally {
-          setIsForceRefreshing(false);
-        }
-      }
-      
-      // Make API request with a timeout
-      const response = await axios.get(`http://127.0.0.1:8000/message/${apiType}/${emotion}`, {
-        timeout: 5000
-      });
-      
-      if (response.data && response.data.message) {
-        // Update last fetch time
-        lastFetchTimeRef.current[cacheKey] = now;
-        return response.data.message;
-      } else {
-        throw new Error('Invalid response format');
-      }
+      // Use fallback responses directly since API endpoints don't exist
+      const fallbackType = type === 'joke' ? 'jokes' : type === 'quote' ? 'quotes' : 'encouragement';
+      const fallbacks = fallbackResponses[fallbackType][emotion];
+      return fallbacks[Math.floor(Math.random() * fallbacks.length)];
     } catch (error) {
       console.error(`Error fetching ${type}:`, error);
       
-      // Use fallback if API fails - but don't show error message
+      // Use fallback if there's an error
       const fallbackType = type === 'joke' ? 'jokes' : type === 'quote' ? 'quotes' : 'encouragement';
       const fallbacks = fallbackResponses[fallbackType][emotion];
       return fallbacks[Math.floor(Math.random() * fallbacks.length)];

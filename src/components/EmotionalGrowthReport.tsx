@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +40,7 @@ interface EmotionalGrowthReportProps {
   onActionSelected?: (action: string) => void;
 }
 
-const EmotionalGrowthReport: React.FC<EmotionalGrowthReportProps> = ({
+const EmotionalGrowthReport = ({
   emotionHistory,
   currentEmotion,
   timePeriod = 'week',

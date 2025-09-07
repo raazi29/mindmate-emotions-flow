@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar } from '@/components/ui/calendar';
@@ -41,7 +41,7 @@ interface ExportDialogProps {
   availableTags: string[];
 }
 
-const ExportDialog: React.FC<ExportDialogProps> = ({
+const ExportDialog = ({
   open,
   onOpenChange,
   entries,

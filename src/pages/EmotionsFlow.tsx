@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/components/ThemeProvider';
 import Navbar from '@/components/Navbar';
 import EmotionFlowChart from '@/components/EmotionFlowChart';
 import EmotionTransitionAnalysis from '@/components/EmotionTransitionAnalysis';
-import EmotionPatternDetector from '@/components/EmotionPatternDetector';
+import EmotionalInsightML from '@/components/EmotionalInsightML';
+// import EmotionPatternDetector from '@/components/EmotionPatternDetector';
 import EmotionCalendarHeatmap from '@/components/EmotionCalendarHeatmap';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -291,8 +292,9 @@ const EmotionsFlow = () => {
                           </TabsContent>
                           
                           <TabsContent value="patterns">
-                            <EmotionPatternDetector 
-                              emotionHistory={processedEmotionHistory}
+                            <EmotionalInsightML
+                              currentEmotion={currentEmotion}
+                              journalEntries={processedEmotionHistory.map(entry => entry.emotion).slice(0, 20)}
                               key={`patterns-${refreshKey}`}
                             />
                           </TabsContent>

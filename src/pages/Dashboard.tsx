@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo, memo } from 'react';
 import Navbar from '@/components/Navbar';
 import EmotionTracker from '@/components/EmotionTracker';
 // Lazy load heavy components
@@ -12,14 +12,16 @@ const EmotionResponse = lazy(() => import('@/components/EmotionResponse'));
 const EmotionFlowChart = lazy(() => import('@/components/EmotionFlowChart'));
 const EmotionCalendarHeatmap = lazy(() => import('@/components/EmotionCalendarHeatmap'));
 const EmotionTransitionAnalysis = lazy(() => import('@/components/EmotionTransitionAnalysis'));
-const EmotionPatternDetector = lazy(() => import('@/components/EmotionPatternDetector'));
+const RealtimeEmotionAnalysis = lazy(() => import('@/components/RealtimeEmotionAnalysis'));
+const EmotionProgressionTracker = lazy(() => import('@/components/EmotionProgressionTracker'));
+// const EmotionPatternDetector = lazy(() => import('@/components/EmotionPatternDetector'));
 import HuggingFaceSetup from '@/components/HuggingFaceSetup';
 import { toast } from '@/hooks/use-toast';
 import { getHuggingFace, isHuggingFaceAvailable } from '@/utils/huggingfaceUtils';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useTheme } from '@/components/ThemeProvider';
-import { Loader2, BarChart, Clock, Calendar, PieChart, TrendingUp, LayoutDashboard, Activity, RefreshCw, Workflow } from 'lucide-react';
+import { Loader2, BarChart, Clock, Calendar, PieChart, TrendingUp, LayoutDashboard, Activity, RefreshCw, Workflow, Brain, ArrowRight } from 'lucide-react';
 import emotionService, { SystemStatus } from '@/utils/emotionService';
 import EmotionSuggestionsDialog from '@/components/EmotionSuggestionsDialog';
 import { Button } from '@/components/ui/button';
@@ -28,6 +30,7 @@ import PerformanceMonitor from '@/components/PerformanceMonitor';
 import LoadingFallback from '@/components/LoadingFallback';
 import TestAuth from '@/components/TestAuth';
 import { useNavigate } from 'react-router-dom';
+import { emotionAnalysisService } from '@/services/EmotionAnalysisService';
 
 type Emotion = 'joy' | 'sadness' | 'anger' | 'fear' | 'love' | 'surprise' | 'neutral';
 
@@ -39,7 +42,7 @@ interface EmotionTimelineEntry {
 }
 
 // New EmotionalInsightsDashboard component for the enhanced overview section
-const EmotionalInsightsDashboard = React.memo(({ 
+const EmotionalInsightsDashboard = memo(({ 
   emotionHistory, 
   currentEmotion 
 }: { 
@@ -48,6 +51,8 @@ const EmotionalInsightsDashboard = React.memo(({
 }) => {
   // Force component to refresh when a new input happens
   const [refreshKey, setRefreshKey] = useState(0);
+  const [emotionAnalysis, setEmotionAnalysis] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Listen for real-time emotion changes
   useEffect(() => {
@@ -76,11 +81,54 @@ const EmotionalInsightsDashboard = React.memo(({
     setRefreshKey(prev => prev + 1);
   }, [emotionHistory.length]);
   
+  // Fetch emotion analysis when emotion history changes
+  useEffect(() => {
+    const fetchEmotionAnalysis = async () => {
+      if (emotionHistory.length > 0) {
+        setIsLoading(true);
+        try {
+          // Get the most recent entries for analysis
+          const recentEntries = emotionHistory.slice(-10).map(entry => ({
+            emotion: entry.emotion,
+            timestamp: entry.timestamp,
+            text: '' // We don't have text in this data structure
+          }));
+          
+          // Use real ML analysis with the emotionAnalysisService
+          const analysisText = `Current emotion: ${currentEmotion}. Recent emotional history: ${emotionHistory.slice(-5).map(e => e.emotion).join(', ')}`;
+          const analysis = await emotionAnalysisService.analyzeEmotion(analysisText);
+          
+          setEmotionAnalysis(analysis);
+        } catch (error) {
+          console.error('Error fetching emotion analysis:', error);
+          // Fallback to demo analysis if real analysis fails
+          const fallbackAnalysis = {
+            primary_emotion: currentEmotion,
+            secondary_emotions: [],
+            intensity: 5,
+            insights: `Your recent emotional pattern shows a tendency toward ${currentEmotion}. This is a normal emotional state that provides valuable information about your current experience.`,
+            suggestions: [
+              "Continue to observe your emotional patterns",
+              "Practice mindfulness to stay present with your feelings",
+              "Consider journaling to explore your emotions in more depth"
+            ]
+          };
+          setEmotionAnalysis(fallbackAnalysis);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    fetchEmotionAnalysis();
+  }, [emotionHistory, currentEmotion]);
+  
   // Calculate quick stats from the emotion history - memoized but will refresh when refreshKey changes
   const stats = useMemo(() => {
     console.log('Recalculating dashboard stats with', emotionHistory.length, 'entries, refreshKey:', refreshKey);
     
     if (!emotionHistory || emotionHistory.length === 0) {
+      console.log('No emotion history available, using default stats');
       return {
         dominantEmotion: 'neutral' as Emotion,
         emotionCounts: {},
@@ -258,7 +306,7 @@ const EmotionalInsightsDashboard = React.memo(({
           Real-time
         </Badge>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card className={`overflow-hidden transition-all duration-300 ${animateUpdate ? 'ring-2 ring-primary/50 shadow-lg' : 'shadow-sm'}`}>
           <CardHeader className="pb-2 bg-gradient-to-br from-primary/5 to-transparent">
             <CardTitle className="text-sm font-medium flex items-center">
@@ -347,6 +395,38 @@ const EmotionalInsightsDashboard = React.memo(({
           </CardContent>
         </Card>
       </div>
+      
+      {/* Emotion Analysis Section */}
+      {emotionAnalysis && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" />
+              Emotional Analysis
+            </CardTitle>
+            <CardDescription>Insights based on your recent emotional patterns</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="bg-primary/5 p-4 rounded-lg">
+                <p className="text-sm">Emotions</p>
+              </div>
+              
+              <div>
+                <h4 className="text-sm font-medium mb-2">Suggestions</h4>
+                <ul className="space-y-2">
+                  {emotionAnalysis.suggestions.map((suggestion: string, index: number) => (
+                    <li key={index} className="flex items-start">
+                      <ArrowRight className="h-4 w-4 text-primary mt-0.5 mr-2 flex-shrink-0" />
+                      <span className="text-sm">{suggestion}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 });
@@ -363,7 +443,7 @@ const Dashboard = () => {
   const [journalEntries, setJournalEntries] = useState<string[]>([]);
   const [showAdvancedAnalysis, setShowAdvancedAnalysis] = useState<boolean>(false);
   const [timelineData, setTimelineData] = useState<EmotionTimelineEntry[]>([]);
-  const [emotionHistory, setEmotionHistory] = useState<{ emotion: Emotion; timestamp: Date }[]>([]);
+  const [emotionHistory, setEmotionHistory] = useState<{ emotion: Emotion; timestamp: Date; intensity: number }[]>([]);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [visualizationTab, setVisualizationTab] = useState<string>('timeline');
   const [selectedEmotion, setSelectedEmotion] = useState<Emotion | null>(null);
@@ -499,7 +579,8 @@ const Dashboard = () => {
                 .filter((entry: any) => entry.emotion)
                 .map((entry: any) => ({
                   emotion: entry.emotion as Emotion,
-                  timestamp: new Date(entry.timestamp)
+                  timestamp: new Date(entry.timestamp),
+                  intensity: entry.intensity || 5
                 }))
             );
             
@@ -518,7 +599,8 @@ const Dashboard = () => {
                   .filter((entry: any) => entry.emotion)
                   .map((entry: any) => ({
                     emotion: entry.emotion as Emotion,
-                    timestamp: new Date(entry.timestamp)
+                    timestamp: new Date(entry.timestamp),
+                    intensity: entry.intensity || 5
                   }))
               ]);
             }, 1000); // Delay to not block the UI
@@ -534,7 +616,8 @@ const Dashboard = () => {
                 .filter((entry: any) => entry.emotion)
                 .map((entry: any) => ({
                   emotion: entry.emotion as Emotion,
-                  timestamp: new Date(entry.timestamp)
+                  timestamp: new Date(entry.timestamp),
+                  intensity: entry.intensity || 5
                 }))
             );
           }
@@ -594,13 +677,13 @@ const Dashboard = () => {
   }, [emotionHistory]);
   
   // Memoize timeline data processing for better performance
-  const processedTimelineData = React.useMemo(() => {
+  const processedTimelineData = useMemo(() => {
     // Return a limited slice of data for better performance
     return timelineData.slice(0, 100);
   }, [timelineData]);
   
   // Memoize emotion history for visualizations
-  const processedEmotionHistory = React.useMemo(() => {
+  const processedEmotionHistory = useMemo(() => {
     // Limit the history data based on current visualization needs
     if (visualizationTab === 'calendar') {
       // For calendar, we need recent data
@@ -634,7 +717,9 @@ const Dashboard = () => {
     const stopRealtimeUpdates = emotionService.startRealtimeUpdates(5000);
     
     // Register for real-time emotion events
-    const handleRealtimeEmotion = (result: { emotion: Emotion; intensity?: number }) => {
+    const handleRealtimeEmotion = (result: { emotion: Emotion; intensity?: number; confidence?: number }) => {
+      console.log('Dashboard received realtime emotion:', result);
+      
       // Update current emotion state when a new emotion is detected
       setCurrentEmotion(result.emotion as Emotion);
       if (result.intensity) setEmotionIntensity(result.intensity);
@@ -651,18 +736,24 @@ const Dashboard = () => {
       // Add to emotion history for flow chart and heatmap
       const newHistoryEntry = {
         emotion: result.emotion as Emotion,
-        timestamp: new Date()
+        timestamp: new Date(),
+        intensity: result.intensity || 5
       };
       
       setEmotionHistory(prev => {
         const newHistory = [...prev, newHistoryEntry];
-        return newHistory.length > 500 ? newHistory.slice(-500) : newHistory;
+        const finalHistory = newHistory.length > 500 ? newHistory.slice(-500) : newHistory;
+        console.log('Updated emotion history, new size:', finalHistory.length, 'latest:', newHistoryEntry);
+        return finalHistory;
       });
+      
+      // Trigger stats refresh by incrementing refresh key
+      setRefreshKey(prev => prev + 1);
       
       // Let users know dashboard is updating in real-time
       toast({
         title: "Real-time update",
-        description: `Detected: ${result.emotion} (intensity: ${result.intensity || 5})`,
+        description: `Feeling: ${result.emotion} (intensity: ${result.intensity || 5})`,
         duration: 2000,
       });
     };
@@ -708,7 +799,8 @@ const Dashboard = () => {
           ...prev,
           {
             emotion: emotion as Emotion,
-            timestamp: new Date()
+            timestamp: new Date(),
+            intensity: 5
           }
         ];
         // Keep history size reasonable
@@ -744,7 +836,7 @@ const Dashboard = () => {
             setIsRefreshing(false);
           });
       }
-    }, 15000); // Reduced to 15 seconds for more real-time updates
+    }, 60000); // Increased to 1 minute for less frequent updates
     
     return () => {
       if (refreshTimerRef.current) {
@@ -764,9 +856,9 @@ const Dashboard = () => {
     setIsRefreshing(true);
     setErrorState(null);
     
-    // Restart real-time updates
+    // Restart real-time updates with longer interval
     emotionService.stopRealtimeUpdates();
-    emotionService.startRealtimeUpdates(5000);
+    emotionService.startRealtimeUpdates(60000); // 1 minute instead of 5 seconds
     
     // Check backend connection first
     emotionService.checkBackendStatus()
@@ -839,8 +931,8 @@ const Dashboard = () => {
     // Check immediately
     checkSystemStatus();
     
-    // Set up periodic check every 30 seconds
-    const statusInterval = setInterval(checkSystemStatus, 30000);
+    // Set up periodic check every 2 minutes instead of 30 seconds
+    const statusInterval = setInterval(checkSystemStatus, 120000);
     
     return () => {
       clearInterval(statusInterval);
@@ -902,7 +994,8 @@ const Dashboard = () => {
       // Add to emotion history for flow chart and heatmap
       const newHistoryEntry = {
         emotion: emotion as Emotion,
-        timestamp: new Date()
+        timestamp: new Date(),
+        intensity: intensity || 5
       };
       
       setEmotionHistory(prev => {
@@ -1158,17 +1251,22 @@ const Dashboard = () => {
             {showPatternDetector && (
               <Card className="shadow-md overflow-hidden">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Emotion Pattern Detection</CardTitle>
-                  <CardDescription>Analyzing recurring patterns in your emotional data</CardDescription>
+                  <CardTitle className="text-lg">Emotion Analysis</CardTitle>
+                  <CardDescription>AI-powered insights about your emotional patterns</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Suspense fallback={<LoadingFallback />}>
                     <div className="relative">
-                      <EmotionPatternDetector 
-                        emotionHistory={emotionHistory.slice(-100)} 
-                      />
+                      {showAdvancedAnalysis && hfEnabled ? (
+                        <EmotionalInsightML
+                          currentEmotion={currentEmotion}
+                          journalEntries={journalEntries.slice(0, 20)}
+                        />
+                      ) : (
+                        <EmotionInsights />
+                      )}
                       <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
-                        Showing patterns from most recent 100 entries
+                        Showing analysis from most recent entries
                       </div>
                     </div>
                   </Suspense>
@@ -1192,11 +1290,12 @@ const Dashboard = () => {
                         onValueChange={setVisualizationTab}
                         className="w-full"
                       >
-                        <TabsList className="grid w-full grid-cols-4 mb-4">
+                        <TabsList className="grid w-full grid-cols-5 mb-4">
                           <TabsTrigger value="timeline">Timeline</TabsTrigger>
                           <TabsTrigger value="flow">Flow Chart</TabsTrigger>
                           <TabsTrigger value="calendar">Calendar</TabsTrigger>
                           <TabsTrigger value="analysis">Analysis</TabsTrigger>
+                          <TabsTrigger value="realtime">Real-time</TabsTrigger>
                         </TabsList>
                         
                         <Suspense fallback={<LoadingFallback />}>
@@ -1227,13 +1326,19 @@ const Dashboard = () => {
                               key={`analysis-${globalRefreshKey}`}
                             />
                           </TabsContent>
+                          
+                          <TabsContent value="realtime">
+                            <RealtimeEmotionAnalysis emotionHistory={emotionHistory.slice(-50)} />
+                          </TabsContent>
                         </Suspense>
                       </Tabs>
                     </div>
                     
-                    {showRecommendations && (
-                      <div className="space-y-6">
-                        <Suspense fallback={<LoadingFallback />}>
+                    <div className="space-y-6">
+                      <Suspense fallback={<LoadingFallback />}>
+                        <EmotionProgressionTracker emotionHistory={emotionHistory} />
+                        
+                        {showRecommendations && (
                           <Card className="shadow-sm">
                             <CardHeader className="pb-2">
                               <CardTitle className="text-lg">Recommendations</CardTitle>
@@ -1244,23 +1349,23 @@ const Dashboard = () => {
                               />
                             </CardContent>
                           </Card>
-                          
-                          {hfEnabled && (
-                            <Card className="shadow-sm">
-                              <CardHeader className="pb-2">
-                                <CardTitle className="text-lg">Predictions</CardTitle>
-                              </CardHeader>
-                              <CardContent>
-                                <EmotionPrediction 
-                                  currentEmotion={currentEmotion}
-                                  recentEntries={journalEntries.slice(0, 10)}
-                                />
-                              </CardContent>
-                            </Card>
-                          )}
-                        </Suspense>
-                      </div>
-                    )}
+                        )}
+                        
+                        {hfEnabled && showRecommendations && (
+                          <Card className="shadow-sm">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-lg">Predictions</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <EmotionPrediction 
+                                currentEmotion={currentEmotion}
+                                recentEntries={journalEntries.slice(0, 10)}
+                              />
+                            </CardContent>
+                          </Card>
+                        )}
+                      </Suspense>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -1290,4 +1395,4 @@ const Dashboard = () => {
   );
 };
 
-export default React.memo(Dashboard);
+export default memo(Dashboard);

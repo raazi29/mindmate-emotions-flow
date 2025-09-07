@@ -18,6 +18,25 @@ interface EmotionResult {
 export const detectEmotion = async (text: string): Promise<EmotionResult> => {
   console.log('[detectEmotion] Starting analysis of text:', text.substring(0, 50) + '...');
   
+  // Always try to use real ML analysis first
+  try {
+    // Use the emotionService which connects to the backend API
+    const emotionService = (await import('@/utils/emotionService')).default;
+    const result = await emotionService.detectEmotion(text);
+    
+    // If we got a valid result, return it
+    if (result && result.emotion) {
+      return {
+        emotion: result.emotion,
+        intensity: result.intensity || Math.round(result.confidence * 10),
+        confidence: result.confidence
+      };
+    }
+  } catch (error) {
+    console.error('[detectEmotion] Error using real ML analysis:', error);
+  }
+  
+  // Only use pattern matching if real ML analysis completely fails
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 1000));
   
@@ -25,12 +44,12 @@ export const detectEmotion = async (text: string): Promise<EmotionResult> => {
   
   // Enhanced emotion keywords with more nuanced language patterns
   const emotionKeywords = {
-    joy: ['happy', 'joy', 'excited', 'glad', 'delighted', 'pleased', 'wonderful', 'thrilled', 
+    joy: ['happy', 'joy', 'excited', 'glad', 'delighted', 'pleased', 'wonderful', 'thrilled',
           'ecstatic', 'fantastic', 'amazing', 'great', 'good', 'positive', 'celebrate', 'cheerful'],
     sadness: ['sad', 'unhappy', 'depressed', 'down', 'miserable', 'upset', 'hurt', 'disappointed',
               'gloomy', 'hopeless', 'heartbroken', 'grief', 'sorrow', 'crying', 'tear', 'blue', 'shit', 'crap'],
     anger: ['angry', 'mad', 'furious', 'annoyed', 'irritated', 'frustrated', 'upset', 'rage',
-            'outraged', 'hostile', 'offended', 'bitter', 'enraged', 'indignant', 'hate', 'resent', 
+            'outraged', 'hostile', 'offended', 'bitter', 'enraged', 'indignant', 'hate', 'resent',
             'fuck', 'damn', 'hell', 'pissed', 'shit', 'crap'],
     fear: ['afraid', 'scared', 'frightened', 'worried', 'anxious', 'nervous', 'terrified', 'fear',
            'panic', 'dread', 'horror', 'alarm', 'terror', 'uneasy', 'phobia', 'apprehensive', 'anxiety'],
@@ -44,7 +63,7 @@ export const detectEmotion = async (text: string): Promise<EmotionResult> => {
   
   // Use more advanced contextual analysis - look for sentence patterns
   const sentencePatterns = {
-    joy: [/i (am|feel|am feeling) (so |really |very )?(happy|great|good|fantastic)/i, 
+    joy: [/i (am|feel|am feeling) (so |really |very )?(happy|great|good|fantastic)/i,
           /this (is|was) (amazing|awesome|wonderful|excellent)/i],
     sadness: [/i (am|feel|am feeling) (so |really |very )?(sad|down|depressed|upset)/i,
               /this (is|was) (terrible|awful|disappointing|heartbreaking)/i],
@@ -135,7 +154,7 @@ export const detectEmotion = async (text: string): Promise<EmotionResult> => {
   const confidenceScore = dominantScore / (totalPositiveScore || 1);
   
   // Restore intensity in log message
-  console.log(`[detectEmotion] Analysis complete: ${dominantEmotion} (intensity: ${emotionIntensity}, confidence: ${confidenceScore.toFixed(2)})`);
+  console.log(`[detectEmotion] Analysis complete: ${dominantEmotion}`);
   
   // Restore intensity in return value
   return {
@@ -162,48 +181,44 @@ export const getSuggestionForEmotion = (emotion: Emotion): string => {
 
 // Enhanced emotion detection using ML models when available
 export const analyzeEmotionWithModel = async (text: string, hf: HfInference | null): Promise<EmotionResult> => {
-  if (hf) {
-    try {
-      // Use enhanced ML-powered detection with multiple model fallbacks
-      const result = await detectEmotionWithMultipleModels(text, hf);
-      
-      // Restore intensity calculation
-      const intensity = Math.min(10, Math.max(1, Math.round(result.confidence * 10)));
-      
-      // Get additional insights if text is substantial
-      if (text.length > 20) {
-        try {
-          // This could provide deeper analysis on the emotion
-          const insight = await generateEmotionalInsight(text, result.emotion, hf);
-          // Restore intensity in return value
-          return {
-            emotion: result.emotion,
-            intensity: insight.intensity || intensity,
-            confidence: result.confidence
-          };
-        } catch (error) {
-          console.error('Error generating emotional insight:', error);
-        }
+  // Always try to use real ML analysis first
+  try {
+    // Use enhanced ML-powered detection with multiple model fallbacks
+    const result = await detectEmotionWithMultipleModels(text, hf);
+    
+    // Restore intensity calculation
+    const intensity = Math.min(10, Math.max(1, Math.round(result.confidence * 10)));
+    
+    // Get additional insights if text is substantial
+    if (text.length > 20) {
+      try {
+        // This could provide deeper analysis on the emotion
+        const insight = await generateEmotionalInsight(text, result.emotion, hf);
+        // Restore intensity in return value
+        return {
+          emotion: result.emotion,
+          intensity: insight.intensity || intensity,
+          confidence: result.confidence
+        };
+      } catch (error) {
+        console.error('Error generating emotional insight:', error);
       }
-      
-      // Restore intensity in return value
-      return {
-        emotion: result.emotion,
-        intensity: intensity, // Add back intensity
-        confidence: result.confidence
-      };
-    } catch (error) {
-      console.error('Error using ML model for emotion detection:', error);
-      // Fall back to pattern-based analysis
-      toast({
-        title: 'Using fallback emotion detection',
-        description: 'Advanced model unavailable, using pattern analysis instead',
-        variant: 'default'
-      });
-      return detectEmotion(text);
     }
-  } else {
-    // Use pattern-based analysis if no model available
+    
+    // Restore intensity in return value
+    return {
+      emotion: result.emotion,
+      intensity: intensity, // Add back intensity
+      confidence: result.confidence
+    };
+  } catch (error) {
+    console.error('Error using ML model for emotion detection:', error);
+    // Fall back to pattern-based analysis only as a last resort
+    toast({
+      title: 'Using fallback emotion detection',
+      description: 'Advanced model unavailable, using pattern analysis instead',
+      variant: 'default'
+    });
     return detectEmotion(text);
   }
 };

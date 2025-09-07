@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState, useCallback } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Repeat, AlertCircle, Info, TrendingUp, Clock, RefreshCw, Activity } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -49,7 +49,7 @@ const debounce = <T extends any[]>(
   };
 };
 
-const EmotionPatternDetector: React.FC<EmotionPatternDetectorProps> = ({
+const EmotionPatternDetector = ({
   emotionHistory = []
 }) => {
   const { theme } = useTheme();

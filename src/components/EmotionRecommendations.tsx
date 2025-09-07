@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Clock, ArrowRight, BookOpen, CheckCircle, Play, Heart, Sparkles, Zap, Search, Volume2, VolumeX, X, Calendar } from 'lucide-react';
@@ -182,14 +182,14 @@ const ShimmerStyles = () => {
   );
 };
 
-const GlassTimer: React.FC<GlassTimerProps> = ({ 
+const GlassTimer = ({ 
   duration, 
   isActive, 
   onComplete, 
   showDate = false,
   className,
   compact = false
-}) => {
+}: GlassTimerProps) => {
   const [seconds, setSeconds] = useState(duration * 60);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -1093,9 +1093,9 @@ const ActivityDialog = ({ activity, onClose }: { activity: Activity; onClose: ()
   );
 };
 
-const EmotionRecommendations: React.FC<EmotionRecommendationsProps> = ({ 
+const EmotionRecommendations = ({ 
   emotion = 'neutral' 
-}) => {
+}: EmotionRecommendationsProps) => {
   // Filter activities based on emotion - memoize this calculation
   const activitiesToShow = useMemo(() => {
     console.log("EmotionRecommendations: Recalculating activities for emotion:", emotion);
@@ -1229,4 +1229,4 @@ const EmotionRecommendations: React.FC<EmotionRecommendationsProps> = ({
   );
 };
 
-export default React.memo(EmotionRecommendations); 
+export default memo(EmotionRecommendations); 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -14,10 +14,10 @@ interface EmotionPredictionProps {
   recentEntries?: string[];
 }
 
-const EmotionPrediction: React.FC<EmotionPredictionProps> = ({
+const EmotionPrediction = ({
   currentEmotion,
   recentEntries = []
-}) => {
+}: EmotionPredictionProps) => {
   const [loading, setLoading] = useState(false);
   const [predictedEmotion, setPredictedEmotion] = useState<Emotion | null>(null);
   const [predictionConfidence, setPredictionConfidence] = useState(0);

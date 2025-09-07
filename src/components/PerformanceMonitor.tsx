@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 
 interface PerformanceMonitorProps {
@@ -6,7 +6,7 @@ interface PerformanceMonitorProps {
   criticalThreshold?: number; // milliseconds
 }
 
-const PerformanceMonitor: React.FC<PerformanceMonitorProps> = ({
+const PerformanceMonitor = ({
   warningThreshold = 300, // Frame times above this will trigger a warning
   criticalThreshold = 700, // Frame times above this will trigger a critical warning
 }) => {

@@ -19,6 +19,7 @@ import SupabaseTest from "./pages/SupabaseTest";
 import EmotionsFlow from "./pages/EmotionsFlow";
 import SafetyPrivacy from "./pages/SafetyPrivacy";
 import Auth from "./pages/Auth";
+import AICompanion from "./pages/AICompanion";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 
@@ -62,14 +63,20 @@ const App = () => (
           <Toaster />
           <Sonner />
           <ThemeToggleHandler />
-          <BrowserRouter>
+          <BrowserRouter
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true,
+            }}
+          >
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/journal" element={<ProtectedRoute><Journal /></ProtectedRoute>} />
               <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
-              <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
-              <Route path="/chat" element={<ProtectedRoute><AnonymousChatrooms /></ProtectedRoute>} />
+                            <Route path="/ai-companion" element={<ProtectedRoute><AICompanion /></ProtectedRoute>} />
+                            <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+                            <Route path="/chat" element={<ProtectedRoute><AnonymousChatrooms /></ProtectedRoute>} />
               <Route path="/chat/setup" element={<ProtectedRoute><ChatroomSetup /></ProtectedRoute>} />
               <Route path="/chat/test" element={<ProtectedRoute><SupabaseTest /></ProtectedRoute>} />
               <Route path="/emotions-flow" element={<ProtectedRoute><EmotionsFlow /></ProtectedRoute>} />

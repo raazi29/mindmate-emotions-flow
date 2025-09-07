@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -50,7 +50,7 @@ interface MindfulnessExerciseProps {
 
 const DEFAULT_DURATION = 5; // 5 minutes
 
-const MindfulnessExercise: React.FC<MindfulnessExerciseProps> = ({
+const MindfulnessExercise = ({
   emotion,
   intensity = 5,
   duration = DEFAULT_DURATION,
@@ -116,30 +116,194 @@ const MindfulnessExercise: React.FC<MindfulnessExerciseProps> = ({
     setIsLoading(true);
     
     try {
-      const response = await fetch('http://localhost:8000/personalized-mindfulness', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
+      // Use a fallback mindfulness exercise since API endpoint doesn't exist
+      const fallbackExercises: Record<string, MindfulnessExercise> = {
+        joy: {
+          title: "Mindful Gratitude Practice",
+          introduction: "Take a moment to appreciate the positive emotions you're experiencing. This practice will help you deepen your connection with joy and contentment.",
+          preparation: [
+            "Find a comfortable seated position",
+            "Close your eyes or soften your gaze",
+            "Take three deep breaths to center yourself"
+          ],
+          steps: [
+            {
+              instruction: "Bring to mind one thing you're grateful for right now. Notice how it makes you feel in your body.",
+              duration_seconds: 30
+            },
+            {
+              instruction: "Think of a recent moment that brought you joy. Replay it in your mind with as much detail as possible.",
+              duration_seconds: 45
+            },
+            {
+              instruction: "Notice any physical sensations associated with these positive feelings. Where do you feel them in your body?",
+              duration_seconds: 30
+            },
+            {
+              instruction: "Take a few deep breaths and allow yourself to fully experience these positive emotions.",
+              duration_seconds: 30
+            }
+          ],
+          conclusion: "You've completed a mindfulness practice focused on gratitude and joy. Notice how you feel now compared to when you started.",
+          benefits: [
+            "Strengthens positive emotional experiences",
+            "Increases feelings of gratitude and contentment",
+            "Helps anchor positive emotions in your daily life"
+          ],
+          total_duration_minutes: 5
         },
-        body: JSON.stringify({
-          emotion,
-          intensity,
-          duration,
-          exercise_type: exerciseType,
-          preferences
-        }),
-        signal: AbortSignal.timeout(10000) // 10 second timeout
-      });
+        sadness: {
+          title: "Self-Compassion Meditation",
+          introduction: "This practice will help you offer kindness and understanding to yourself during difficult times. Remember that difficult emotions are a natural part of life.",
+          preparation: [
+            "Find a comfortable seated or lying position",
+            "Close your eyes or soften your gaze",
+            "Take three deep breaths to center yourself"
+          ],
+          steps: [
+            {
+              instruction: "Notice where you feel sadness in your body. Without trying to change anything, simply observe these sensations.",
+              duration_seconds: 30
+            },
+            {
+              instruction: "Place your hand on your heart or another soothing location. Offer yourself words of comfort like 'This is difficult, but I am here for you.'",
+              duration_seconds: 45
+            },
+            {
+              instruction: "Remember that suffering is a shared human experience. You are not alone in feeling this way.",
+              duration_seconds: 30
+            },
+            {
+              instruction: "Take a few deep breaths and allow yourself to receive the compassion you're offering.",
+              duration_seconds: 30
+            }
+          ],
+          conclusion: "You've completed a self-compassion practice. Notice any shift in how you're relating to your difficult emotions.",
+          benefits: [
+            "Reduces self-criticism and increases self-kindness",
+            "Helps process difficult emotions with greater ease",
+            "Strengthens emotional resilience"
+          ],
+          total_duration_minutes: 5
+        },
+        anger: {
+          title: "Mindful Breathing for Anger",
+          introduction: "This breathing practice will help you create space between yourself and intense anger, allowing you to respond more skillfully to challenging situations.",
+          preparation: [
+            "Find a comfortable seated position",
+            "Close your eyes or soften your gaze",
+            "Take three deep breaths to center yourself"
+          ],
+          steps: [
+            {
+              instruction: "Notice where you feel anger in your body. Without trying to change anything, simply observe these sensations.",
+              duration_seconds: 30
+            },
+            {
+              instruction: "Begin breathing slowly and deeply. With each inhale, imagine breathing in calm. With each exhale, imagine releasing tension.",
+              duration_seconds: 60
+            },
+            {
+              instruction: "If your mind wanders to the source of your anger, gently redirect attention back to your breath.",
+              duration_seconds: 30
+            },
+            {
+              instruction: "Take a few more deep breaths, noticing any shift in your emotional state.",
+              duration_seconds: 30
+            }
+          ],
+          conclusion: "You've completed a breathing practice for anger management. Notice how you feel now compared to when you started.",
+          benefits: [
+            "Activates the body's relaxation response",
+            "Creates space between emotion and reaction",
+            "Helps regulate intense emotions"
+          ],
+          total_duration_minutes: 5
+        },
+        fear: {
+          title: "Grounding Exercise for Anxiety",
+          introduction: "This grounding practice will help you feel more secure and present when experiencing fear or anxiety. It connects you with your immediate environment.",
+          preparation: [
+            "Find a comfortable seated position",
+            "Close your eyes or soften your gaze",
+            "Take three deep breaths to center yourself"
+          ],
+          steps: [
+            {
+              instruction: "Notice where you feel fear or anxiety in your body. Without trying to change anything, simply observe these sensations.",
+              duration_seconds: 30
+            },
+            {
+              instruction: "Name 5 things you can see around you. Really take them in with your eyes.",
+              duration_seconds: 30
+            },
+            {
+              instruction: "Name 4 things you can touch. Feel their texture, temperature, and weight.",
+              duration_seconds: 30
+            },
+            {
+              instruction: "Name 3 things you can hear. Listen carefully to the sounds around you.",
+              duration_seconds: 30
+            },
+            {
+              instruction: "Name 2 things you can smell. Breathe deeply and notice any scents.",
+              duration_seconds: 30
+            },
+            {
+              instruction: "Name 1 thing you can taste. Notice the flavors in your mouth.",
+              duration_seconds: 30
+            }
+          ],
+          conclusion: "You've completed a grounding exercise. Notice how connecting with your environment has affected your anxiety.",
+          benefits: [
+            "Reduces anxiety by focusing on the present moment",
+            "Helps break cycles of worry and rumination",
+            "Strengthens your sense of safety and stability"
+          ],
+          total_duration_minutes: 5
+        },
+        neutral: {
+          title: "Mindful Breathing",
+          introduction: "This simple breathing practice will help you cultivate awareness and presence, regardless of your current emotional state.",
+          preparation: [
+            "Find a comfortable seated position",
+            "Close your eyes or soften your gaze",
+            "Take three deep breaths to center yourself"
+          ],
+          steps: [
+            {
+              instruction: "Begin breathing naturally. Notice the sensation of air entering and leaving your nostrils.",
+              duration_seconds: 45
+            },
+            {
+              instruction: "Notice when your mind wanders. Gently redirect attention back to your breath without judgment.",
+              duration_seconds: 60
+            },
+            {
+              instruction: "Expand your awareness to include your entire breathing process - the full inhale, the pause, the exhale, and the pause.",
+              duration_seconds: 45
+            },
+            {
+              instruction: "Take a few more deep breaths, noticing how you feel in this moment.",
+              duration_seconds: 30
+            }
+          ],
+          conclusion: "You've completed a basic mindfulness breathing practice. Notice any changes in your awareness or emotional state.",
+          benefits: [
+            "Develops present-moment awareness",
+            "Reduces stress and promotes relaxation",
+            "Strengthens attention and concentration"
+          ],
+          total_duration_minutes: 5
+        }
+      };
       
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      setExercise(data);
+      // Select appropriate exercise based on emotion
+      const selectedExercise = fallbackExercises[emotion] || fallbackExercises.neutral;
+      setExercise(selectedExercise);
       
     } catch (error) {
-      console.error('Error fetching mindfulness exercise:', error);
+      console.error('Error generating mindfulness exercise:', error);
       toast({
         title: "Couldn't load exercise",
         description: "There was a problem loading the mindfulness exercise. Please try again.",

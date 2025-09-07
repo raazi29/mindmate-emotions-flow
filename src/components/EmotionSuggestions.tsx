@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Clock, ArrowRight, Heart, Sparkles } from 'lucide-react';
@@ -148,7 +148,7 @@ const typeBadgeColors: Record<SuggestionType, string> = {
   social: 'bg-pink-100 dark:bg-pink-900/50 text-pink-800 dark:text-pink-200'
 };
 
-const EmotionSuggestions: React.FC<EmotionSuggestionsProps> = ({ emotion = 'neutral' }) => {
+const EmotionSuggestions = ({ emotion = 'neutral' }) => {
   const suggestions = SUGGESTIONS[emotion] || SUGGESTIONS.neutral;
   const [activeSuggestion, setActiveSuggestion] = useState<number | null>(null);
 
