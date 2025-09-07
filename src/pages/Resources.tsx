@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { TabsContent, Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Search, BookmarkPlus, Bookmark, Star, Clock, Info, RefreshCcw, Filter, ChevronDown, Loader2, Brain, HeartHandshake, Cloud, Book, PlusCircle, Check, Share2, Printer, Download, VolumeIcon, MicIcon } from 'lucide-react';
+import { Search, BookmarkPlus, Bookmark, Star, Clock, Info, RefreshCcw, Filter, ChevronDown, Loader2, Brain, HeartHandshake, Cloud, Book, PlusCircle, Check, Share2, Printer, Download, VolumeIcon, MicIcon, MessageCircle } from 'lucide-react';
 import ResourceDetailModal from '@/components/ResourceDetailModal';
 import { getHuggingFace, recommendResourcesForInput } from '@/utils/huggingfaceUtils';
 import { 
@@ -23,7 +23,7 @@ import RealtimeEmotionDetector from '@/components/RealtimeEmotionDetector';
 import EmotionSuggestions from '@/components/EmotionSuggestions';
 import QwenAISuggestionVoice from '@/components/QwenAISuggestionVoice';
 import EmotionalMediaRecommendations from '@/components/EmotionalMediaRecommendations';
-import PersonalizedChatbot from '@/components/PersonalizedChatbot';
+
 import { 
   detectEmotionOpenRouter, 
   getPersonalizedRecommendations, 
@@ -824,10 +824,10 @@ const Resources = () => {
       
       if (usingOpenRouter) {
         // Use OpenRouter with Qwen 3 for personalization
-        updatedResources = await getPersonalizedRecommendations(moodInput, allResources);
+        updatedResources = await getPersonalizedRecommendations(moodInput);
       } else {
+        updatedResources = await recommendResourcesForInput(moodInput);
         // Fallback to existing recommendResourcesForInput function
-        updatedResources = await recommendResourcesForInput(moodInput, allResources);
       }
       
       if (updatedResources) {
@@ -859,8 +859,8 @@ const Resources = () => {
 
         toast({
           title: "Recommendations personalized",
-          description: usingOpenRouter ? 
-            "Resources have been reordered using Qwen 3 AI analysis" : 
+          description: usingOpenRouter ?
+            "Resources have been reordered using Qwen 3 AI analysis" :
             "Resources have been reordered based on your input"
         });
       }
@@ -1364,25 +1364,26 @@ const Resources = () => {
       <main className="flex-1 pt-24 pb-12">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-            <div>
-              <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Coping Strategies & Resources
-              </h1>
-              <p className="text-muted-foreground">
-                Explore our collection of articles, videos, exercises, and coping techniques to support your emotional well-being
-              </p>
-            </div>
-            
-            <div className="relative w-full md:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search resources..." 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 backdrop-blur-lg bg-white/10 border-white/20"
-              />
-            </div>
-          </div>
+  <div>
+    <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+      Coping Strategies & Resources
+    </h1>
+    <p className="text-muted-foreground">
+      Explore our collection of articles, videos, exercises, and coping techniques to support your emotional well-being
+    </p>
+  </div>
+  
+  <div className="relative w-full md:w-72">
+    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+    <Input 
+      placeholder="Search resources..." 
+      value={searchTerm} 
+      onChange={(e) => setSearchTerm(e.target.value)}
+      className="pl-10 backdrop-blur-lg bg-white/10 border-white/20"
+    />
+  </div>
+</div>
+
           
           <div className="mb-6">
             {currentEmotionalState && (
@@ -1409,64 +1410,6 @@ const Resources = () => {
                 onResourceSelect={handleVoiceSuggestionSelect}
                 autoPlay={shouldAutoPlayVoice}
               />
-            </div>
-          )}
-          
-          {/* Show personalization section if AI is available */}
-          {(getHuggingFace() || usingOpenRouter) && (
-            <div className="mb-6 rounded-lg overflow-hidden shadow-lg animate-fade-in">
-              {/* Header with blue gradient background */}
-              <div className="bg-gradient-to-r from-primary/80 to-primary/60 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/20 p-2 rounded-full flex items-center justify-center">
-                    <span className="text-xl">🧠</span>
-                  </div>
-                  <div className="text-white">
-                    <h3 className="font-medium">Personalize Your Resources</h3>
-                    <p className="text-sm text-white/80">Chat with our AI assistant to get personalized resource recommendations</p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Chat interface */}
-              <div className="p-4 bg-card border-t border-border/30">
-                {usingOpenRouter ? (
-                  <div className="space-y-4 h-auto">
-                    {/* AI Assistant Component */}
-                    <PersonalizedChatbot 
-                      emotionalState={currentEmotionalState} 
-                    />
-                  </div>
-                ) : (
-                  <>
-                <Textarea 
-                  placeholder="Describe your current mood or situation..." 
-                  value={moodInput}
-                  onChange={(e) => setMoodInput(e.target.value)}
-                      className="backdrop-blur-lg bg-background/5 border-border mb-3"
-                      rows={3}
-                />
-                <div className="flex justify-end">
-                  <Button 
-                    onClick={handlePersonalize} 
-                        disabled={moodInput.trim().length < 10 || loading}
-                    className="gap-2"
-                  >
-                        {loading ? (
-                      <>
-                        <RefreshCcw className="h-4 w-4 animate-spin" />
-                            Personalizing...
-                      </>
-                    ) : (
-                      <>
-                        Get Personalized Recommendations
-                      </>
-                    )}
-                  </Button>
-                </div>
-                  </>
-                )}
-              </div>
             </div>
           )}
           
@@ -1651,7 +1594,8 @@ const Resources = () => {
             </Tabs>
               </TabsContent>
               
-              <TabsContent value="strategies">
+
+          <TabsContent value="strategies">
                 <div className="mb-8">
                   <div className="flex justify-between items-center mb-4">
                     <div>
@@ -2048,8 +1992,8 @@ interface ResourceCardProps {
   resourceStatuses?: Record<string, ResourceStatus>;
 }
 
-// Use React.memo to prevent unnecessary re-renders
-const ResourceCard = React.memo(({ resource, isSaved, onSave, onStart, resourceStatuses = {} }: ResourceCardProps) => {
+// Use memo to prevent unnecessary re-renders
+const ResourceCard = memo(({ resource, isSaved, onSave, onStart, resourceStatuses = {} }: ResourceCardProps) => {
   // Map of resource types to their icons
   const typeIcons = {
     article: '📝',

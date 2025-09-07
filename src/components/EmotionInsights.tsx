@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
@@ -19,7 +18,7 @@ const EMOTION_DATA: EmotionDistribution[] = [
   { name: 'Neutral', value: 5, color: '#A3A3A3' },
 ];
 
-const EmotionInsights: React.FC = () => {
+const EmotionInsights = () => {
   return (
     <Card className="w-full glass dark:glass-dark border-none shadow-lg animate-fade-in">
       <CardHeader>

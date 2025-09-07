@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -45,7 +44,7 @@ const generateDemoData = (): EmotionData[] => {
   return data;
 };
 
-const EmotionTimeline: React.FC<EmotionTimelineProps> = ({ data = generateDemoData() }) => {
+const EmotionTimeline = ({ data = generateDemoData() }: EmotionTimelineProps) => {
   const chartData = data.map(entry => ({
     date: format(entry.timestamp, 'MMM dd'),
     intensity: entry.intensity,

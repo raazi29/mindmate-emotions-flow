@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback, Fragment } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { ArrowRight, TrendingUp, ZoomIn, ZoomOut, Move, Info, RefreshCw, X, Clock, BarChart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -27,10 +27,10 @@ interface EmotionFlowChartProps {
   currentEmotion: Emotion;
 }
 
-const EmotionFlowChart: React.FC<EmotionFlowChartProps> = ({ 
+const EmotionFlowChart = ({ 
   emotionHistory = [],
   currentEmotion = 'neutral'
-}) => {
+}: EmotionFlowChartProps) => {
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
   
@@ -1542,12 +1542,12 @@ const EmotionFlowChart: React.FC<EmotionFlowChartProps> = ({
                 <div key={i} className="text-sm text-muted-foreground py-1">
                   <div className="flex items-center gap-1 mb-1">
                     {pattern.pattern.map((emotion, idx) => (
-                      <React.Fragment key={idx}>
+                      <Fragment key={idx}>
                         {idx > 0 && <ArrowRight className="h-3 w-3 mx-0.5 text-muted-foreground/70" />}
                         <Badge variant="outline" className="flex items-center gap-1 py-0.5 px-2">
                           {getEmotionEmoji(emotion)} {emotion}
                         </Badge>
-                      </React.Fragment>
+                      </Fragment>
                     ))}
                   </div>
                   <p>{pattern.description}</p>
